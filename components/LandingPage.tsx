@@ -13,7 +13,8 @@ type RevealProps = {
 };
 
 const RevealSection = ({ id, className = '', children }: RevealProps) => {
-  const [visible, setVisible] = useState(false);
+  // Keep content visible on first paint to avoid blank sections on cold loads.
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
