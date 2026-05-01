@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type UserPlan, normalizePlan } from '@/lib/plans';
+import { t } from '@/lib/i18n';
 import WorkspaceNavbar from './WorkspaceNavbar';
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
@@ -25,9 +26,6 @@ type ApiInvoice = {
   updated_at: string;
 };
 
-type SortKey = 'invoice_number' | 'client' | 'issue_date' | 'due_date' | 'total' | 'created_at';
-type SortDirection = 'asc' | 'desc';
-
 type InvoiceRow = {
   id: string;
   invoiceNumber: string;
@@ -40,21 +38,23 @@ type InvoiceRow = {
   createdAt: string;
 };
 
-const STATUS_ORDER: InvoiceStatus[] = ['draft', 'sent', 'paid', 'overdue', 'cancelled'];
-const STATUS_LABEL: Record<InvoiceStatus, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
-  paid: 'Paid',
-  overdue: 'Overdue',
-  cancelled: 'Cancelled'
+type DateFilter = 'all' | 'upcoming' | 'past_due' | 'no_due_date';
+type SortOption = 'newest' | 'oldest' | 'amount_high' | 'amount_low' | 'due_soon';
+
+const STATUS_DOT_CLASSES: Record<InvoiceStatus, string> = {
+  draft: 'bg-slate-400',
+  sent: 'bg-blue-400',
+  paid: 'bg-emerald-500',
+  overdue: 'bg-rose-500',
+  cancelled: 'bg-slate-400'
 };
 
-const STATUS_CLASSES: Record<InvoiceStatus, string> = {
-  draft: 'bg-slate-100 text-slate-700',
+const STATUS_BADGE_CLASSES: Record<InvoiceStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600',
   sent: 'bg-blue-50 text-blue-700',
   paid: 'bg-emerald-50 text-emerald-700',
-  overdue: 'bg-red-50 text-red-700',
-  cancelled: 'bg-slate-200 text-slate-700'
+  overdue: 'bg-rose-50 text-rose-700',
+  cancelled: 'bg-slate-100 text-slate-600'
 };
 
 const normalizeStatus = (value: string | null): InvoiceStatus => {
@@ -75,6 +75,13 @@ const formatMoney = (amount: number, currency: string) => {
   }
 };
 
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return t('invoices.initialFallback');
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+};
+
 const ConfirmModal = ({
   title,
   description,
@@ -90,18 +97,18 @@ const ConfirmModal = ({
   onCancel: () => void;
   onConfirm: () => void;
 }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-    <div className="w-full max-w-md rounded-2xl border bg-white p-5 shadow-2xl" style={{ borderColor: 'var(--color-border)' }}>
-      <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+    <div className="w-full max-w-md rounded-none border bg-white p-5 shadow-xl" style={{ borderColor: 'var(--color-border)' }}>
+      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
       <p className="mt-2 text-sm text-slate-600">{description}</p>
       <div className="mt-5 flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-          Cancel
+        <button type="button" onClick={onCancel} className="rounded-none border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+          {t('common.cancel')}
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+          className={`rounded-none px-3 py-2 text-sm font-medium text-white ${
             confirmVariant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
@@ -122,22 +129,15 @@ export default function InvoicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [search, setSearch] = useState('');
-  const [sortOption, setSortOption] = useState('newest');
-  const [columnSort, setColumnSort] = useState<{ key: SortKey; dir: SortDirection }>({ key: 'created_at', dir: 'desc' });
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [confirmState, setConfirmState] = useState<
-    | null
-    | {
-        type: 'deleteOne' | 'deleteSelected';
-        id?: string;
-      }
-  >(null);
-  const [swipedId, setSwipedId] = useState<string | null>(null);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | InvoiceStatus>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const [menuInvoiceId, setMenuInvoiceId] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<{ type: 'deleteOne'; id: string } | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || 'User';
+    const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || t('invoices.userFallback');
     setDisplayName(userName);
   }, [user]);
 
@@ -152,6 +152,16 @@ export default function InvoicesPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-invoice-menu="true"]')) return;
+      setMenuInvoiceId(null);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, []);
+
+  useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -159,7 +169,7 @@ export default function InvoicesPage() {
         if (userRes.ok) {
           const userBody = (await userRes.json()) as { name?: string; email?: string; plan?: string };
           if (userBody.name || userBody.email) {
-            setDisplayName(userBody.name || userBody.email || 'User');
+            setDisplayName(userBody.name || userBody.email || t('invoices.userFallback'));
           }
           setPlan(normalizePlan(userBody.plan));
         }
@@ -172,7 +182,7 @@ export default function InvoicesPage() {
           body.map((row) => ({
             id: row.id,
             invoiceNumber: row.invoice_number,
-            clientName: row.to_name || 'Unnamed client',
+            clientName: row.to_name || t('invoices.clientUnnamed'),
             issueDate: row.issue_date,
             dueDate: row.due_date,
             total: Number(row.total ?? 0),
@@ -192,10 +202,18 @@ export default function InvoicesPage() {
     return invoices.reduce(
       (acc, invoice) => {
         acc.total += 1;
-        acc[invoice.status] += 1;
-        if (invoice.status === 'paid') acc.paidAmount += invoice.total;
+        if (invoice.status === 'draft') acc.draft += 1;
+        if (invoice.status === 'sent') acc.sent += 1;
+        if (invoice.status === 'paid') {
+          acc.paid += 1;
+          acc.paidAmount += invoice.total;
+        }
         if (invoice.status === 'sent') acc.outstandingAmount += invoice.total;
-        if (invoice.status === 'overdue') acc.overdueAmount += invoice.total;
+        if (invoice.status === 'overdue') {
+          acc.overdue += 1;
+          acc.overdueAmount += invoice.total;
+        }
+        if (invoice.status === 'cancelled') acc.cancelled += 1;
         return acc;
       },
       {
@@ -213,46 +231,46 @@ export default function InvoicesPage() {
   }, [invoices]);
 
   const filtered = useMemo(() => {
-    let next = invoices;
+    const now = Date.now();
+    let next = [...invoices];
+
     if (activeFilter !== 'all') {
       next = next.filter((invoice) => invoice.status === activeFilter);
     }
+
     const query = search.trim().toLowerCase();
     if (query) {
       next = next.filter((invoice) => invoice.clientName.toLowerCase().includes(query) || invoice.invoiceNumber.toLowerCase().includes(query));
     }
 
-    const sorter = [...next];
+    if (statusFilter !== 'all') {
+      next = next.filter((invoice) => invoice.status === statusFilter);
+    }
 
-    const applySort = (key: SortKey, dir: SortDirection) => {
-      sorter.sort((a, b) => {
-        const order = dir === 'asc' ? 1 : -1;
-        if (key === 'invoice_number') return a.invoiceNumber.localeCompare(b.invoiceNumber) * order;
-        if (key === 'client') return a.clientName.localeCompare(b.clientName) * order;
-        if (key === 'issue_date') return (new Date(a.issueDate || 0).getTime() - new Date(b.issueDate || 0).getTime()) * order;
-        if (key === 'due_date') return (new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime()) * order;
-        if (key === 'total') return (a.total - b.total) * order;
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * order;
-      });
-    };
+    if (dateFilter === 'upcoming') {
+      next = next.filter((invoice) => (invoice.dueDate ? new Date(invoice.dueDate).getTime() >= now : false));
+    }
+    if (dateFilter === 'past_due') {
+      next = next.filter((invoice) => (invoice.dueDate ? new Date(invoice.dueDate).getTime() < now : false));
+    }
+    if (dateFilter === 'no_due_date') {
+      next = next.filter((invoice) => !invoice.dueDate);
+    }
 
-    if (sortOption === 'newest') applySort('created_at', 'desc');
-    if (sortOption === 'oldest') applySort('created_at', 'asc');
-    if (sortOption === 'highest') applySort('total', 'desc');
-    if (sortOption === 'lowest') applySort('total', 'asc');
+    next.sort((a, b) => {
+      if (sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortOption === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortOption === 'amount_high') return b.total - a.total;
+      if (sortOption === 'amount_low') return a.total - b.total;
+      return new Date(a.dueDate || '2999-12-31').getTime() - new Date(b.dueDate || '2999-12-31').getTime();
+    });
 
-    applySort(columnSort.key, columnSort.dir);
-    return sorter;
-  }, [activeFilter, columnSort.dir, columnSort.key, invoices, search, sortOption]);
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
-  };
+    return next;
+  }, [activeFilter, dateFilter, invoices, search, sortOption, statusFilter]);
 
   const onDeleteOne = async (id: string) => {
     await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
     setInvoices((prev) => prev.filter((invoice) => invoice.id !== id));
-    setSelectedIds((prev) => prev.filter((item) => item !== id));
   };
 
   const onDuplicate = async (id: string) => {
@@ -264,7 +282,7 @@ export default function InvoicesPage() {
       const duplicated: InvoiceRow = {
         id: row.id,
         invoiceNumber: row.invoice_number,
-        clientName: row.to_name || 'Unnamed client',
+        clientName: row.to_name || t('invoices.clientUnnamed'),
         issueDate: row.issue_date,
         dueDate: row.due_date,
         total: Number(row.total ?? 0),
@@ -278,292 +296,227 @@ export default function InvoicesPage() {
     }
   };
 
-  const onDeleteSelected = async () => {
-    const ids = [...selectedIds];
-    await Promise.all(ids.map((id) => fetch(`/api/invoices/${id}`, { method: 'DELETE' })));
-    setInvoices((prev) => prev.filter((invoice) => !ids.includes(invoice.id)));
-    setSelectedIds([]);
-  };
+  const getStatusLabel = (status: InvoiceStatus) => t(`invoice.status.${status}`);
 
-  const onBulkMarkPaid = async () => {
-    const ids = [...selectedIds];
-    await Promise.all(ids.map((id) => fetch(`/api/invoices/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) })));
-    setInvoices((prev) => prev.map((invoice) => (ids.includes(invoice.id) ? { ...invoice, status: 'paid' } : invoice)));
-    setSelectedIds([]);
-  };
-
-  const updateStatus = async (id: string, status: InvoiceStatus) => {
-    await fetch(`/api/invoices/${id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    setInvoices((prev) => prev.map((invoice) => (invoice.id === id ? { ...invoice, status } : invoice)));
-  };
-
-  const toggleSort = (key: SortKey) => {
-    setColumnSort((prev) => {
-      if (prev.key !== key) return { key, dir: 'asc' };
-      return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
-    });
-  };
+  const actionItems = (invoiceId: string) => [
+    { label: t('invoices.actions.view'), onClick: () => router.push(`/app?invoiceId=${invoiceId}`) },
+    { label: t('invoices.actions.edit'), onClick: () => router.push(`/app?invoiceId=${invoiceId}`) },
+    { label: duplicatingId === invoiceId ? t('invoices.actions.duplicating') : t('invoices.actions.duplicate'), onClick: () => void onDuplicate(invoiceId), disabled: duplicatingId === invoiceId },
+    { label: t('common.delete'), onClick: () => setConfirmState({ type: 'deleteOne', id: invoiceId }), destructive: true }
+  ];
 
   return (
-    <div className="workspace-bg min-h-screen text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       <WorkspaceNavbar displayName={displayName} plan={plan} />
       <div className="md:pl-[var(--workspace-sidebar-width)]">
-        <main className="mx-auto w-full max-w-[1700px] space-y-5 p-4 pb-24 md:p-6">
-        <section className="app-card rounded-2xl p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold text-slate-900">My Invoices</h1>
-              <p className="mt-1 text-sm text-slate-500">Manage and track all your invoices</p>
+        <main className="mx-auto w-full max-w-[1600px] space-y-3 p-4 pb-24 md:p-8">
+          <header className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{t('invoices.title')}</h1>
+              <Link href="/app" className="inline-flex items-center rounded-none bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                {t('invoices.newInvoice')}
+              </Link>
             </div>
-            <Link href="/app" className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
-              + New Invoice
-            </Link>
+            <p className="text-sm">
+              <span className="font-medium text-slate-500">{t('invoices.stats.invoices', { count: counts.total })}</span>
+              <span className="mx-3 text-slate-300">•</span>
+              <span className="font-semibold text-emerald-600">{t('invoices.stats.paid', { amount: formatMoney(counts.paidAmount, 'USD') })}</span>
+              <span className="mx-3 text-slate-300">•</span>
+              <span className="font-semibold text-amber-600">{t('invoices.stats.outstanding', { amount: formatMoney(counts.outstandingAmount, 'USD') })}</span>
+            </p>
+          </header>
+
+          <div className="mt-2 flex flex-wrap items-center gap-5 border-b border-slate-200 pb-3">
+            {([
+              ['all', t('invoices.tabs.all', { count: counts.total })],
+              ['draft', t('invoices.tabs.draft', { count: counts.draft })],
+              ['sent', t('invoices.tabs.sent', { count: counts.sent })],
+              ['paid', t('invoices.tabs.paid', { count: counts.paid })],
+              ['overdue', t('invoices.tabs.overdue', { count: counts.overdue })],
+              ['cancelled', t('invoices.tabs.cancelled', { count: counts.cancelled })]
+            ] as const).map(([status, label]) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setActiveFilter(status)}
+                className={`-mb-[13px] border-b-2 pb-3 text-sm font-medium ${
+                  activeFilter === status ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        </section>
 
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="app-card rounded-xl px-4 py-3 text-sm">Total: <span className="font-semibold">{counts.total} invoices</span></div>
-          <div className="app-card rounded-xl px-4 py-3 text-sm text-emerald-700">Paid: <span className="font-semibold">{formatMoney(counts.paidAmount, 'USD')}</span></div>
-          <div className="app-card rounded-xl px-4 py-3 text-sm text-amber-700">Outstanding: <span className="font-semibold">{formatMoney(counts.outstandingAmount, 'USD')}</span></div>
-          <div className="app-card rounded-xl px-4 py-3 text-sm text-red-700">Overdue: <span className="font-semibold">{formatMoney(counts.overdueAmount, 'USD')}</span></div>
-        </section>
-
-        <section className="app-card space-y-4 rounded-2xl p-4">
-          <div className="flex flex-wrap gap-2">
-            {(['all', ...STATUS_ORDER] as FilterStatus[]).map((status) => {
-              const count = status === 'all' ? counts.total : counts[status];
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setActiveFilter(status)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                    activeFilter === status ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600'
-                  }`}
+          <div className="border-b border-slate-200 pb-4 pt-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-md">
+                <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 3.473 9.765l3.63 3.63a.75.75 0 1 0 1.06-1.06l-3.63-3.63A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clipRule="evenodd" />
+                </svg>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('invoices.searchPlaceholder')}
+                  className="w-full rounded-none border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-300 focus:ring-0"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-[390px]">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | InvoiceStatus)}
+                  className="!min-h-0 rounded-none border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-slate-300 focus:ring-0"
                 >
-                  <span>{status === 'all' ? 'All' : STATUS_LABEL[status]}</span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs">{count}</span>
-                </button>
-              );
-            })}
+                  <option value="all">{t('invoices.filters.statusAll')}</option>
+                  <option value="draft">{getStatusLabel('draft')}</option>
+                  <option value="sent">{getStatusLabel('sent')}</option>
+                  <option value="paid">{getStatusLabel('paid')}</option>
+                  <option value="overdue">{getStatusLabel('overdue')}</option>
+                  <option value="cancelled">{getStatusLabel('cancelled')}</option>
+                </select>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+                  className="!min-h-0 rounded-none border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-slate-300 focus:ring-0"
+                >
+                  <option value="all">{t('invoices.filters.dateAll')}</option>
+                  <option value="upcoming">{t('invoices.filters.dateUpcoming')}</option>
+                  <option value="past_due">{t('invoices.filters.datePastDue')}</option>
+                  <option value="no_due_date">{t('invoices.filters.dateNoDueDate')}</option>
+                </select>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="!min-h-0 rounded-none border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-slate-300 focus:ring-0"
+                >
+                  <option value="newest">{t('invoices.filters.sortNewest')}</option>
+                  <option value="oldest">{t('invoices.filters.sortOldest')}</option>
+                  <option value="amount_high">{t('invoices.filters.sortAmountHigh')}</option>
+                  <option value="amount_low">{t('invoices.filters.sortAmountLow')}</option>
+                  <option value="due_soon">{t('invoices.filters.sortDueDate')}</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by client name or invoice number"
-              className="md:max-w-sm"
-            />
-            <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="md:max-w-[220px]">
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="highest">Highest amount</option>
-              <option value="lowest">Lowest amount</option>
-            </select>
-          </div>
-        </section>
 
-        <section className="app-card rounded-2xl p-3 md:p-4">
           {isLoading ? (
-            <p className="px-3 py-8 text-sm text-slate-500">Loading invoices...</p>
+            <p className="py-10 text-sm text-slate-500">{t('invoices.loading')}</p>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-              <svg className="h-20 w-20 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M4 6a2 2 0 0 1 2-2h8l6 6v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z" />
-                <path d="M14 4v6h6" />
-                <path d="M8 13h8M8 17h5" />
-              </svg>
-              <p className="mt-4 text-xl font-bold text-slate-900">No invoices yet</p>
-              <p className="mt-1 text-sm text-slate-500">Create your first invoice to get started</p>
-              <Link href="/app" className="mt-4 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Create Invoice</Link>
+            <div className="py-16 text-center">
+              <p className="text-lg font-medium text-slate-900">{t('invoices.empty.title')}</p>
+              <p className="mt-1 text-sm text-slate-500">{t('invoices.empty.description')}</p>
+              <Link href="/app" className="mt-5 inline-flex items-center rounded-none bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                {t('invoices.newInvoice')}
+              </Link>
             </div>
           ) : (
-            <>
-              <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
-                    <tr>
-                      <th className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={filtered.length > 0 && filtered.every((invoice) => selectedIds.includes(invoice.id))}
-                          onChange={(e) => setSelectedIds(e.target.checked ? filtered.map((invoice) => invoice.id) : [])}
-                        />
-                      </th>
-                      <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort('invoice_number')}>Invoice #</th>
-                      <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort('client')}>Client</th>
-                      <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort('issue_date')}>Issue Date</th>
-                      <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort('due_date')}>Due Date</th>
-                      <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort('total')}>Amount</th>
-                      <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((invoice) => {
-                      const isOverdue = invoice.status === 'overdue';
-                      return (
-                        <tr key={invoice.id} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                          <td className="px-3 py-2">
-                            <input type="checkbox" checked={selectedIds.includes(invoice.id)} onChange={() => toggleSelect(invoice.id)} />
-                          </td>
-                          <td className="px-3 py-2 font-mono font-bold text-indigo-700">{invoice.invoiceNumber}</td>
-                          <td className="px-3 py-2 text-slate-700">{invoice.clientName}</td>
-                          <td className="px-3 py-2 text-slate-600">{formatDate(invoice.issueDate)}</td>
-                          <td className={`px-3 py-2 ${isOverdue ? 'font-semibold text-red-600' : 'text-slate-600'}`}>{formatDate(invoice.dueDate)}</td>
-                          <td className="px-3 py-2 font-semibold text-slate-900">{formatMoney(invoice.total, invoice.currency)}</td>
-                          <td className="px-3 py-2">
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${STATUS_CLASSES[invoice.status]}`}>
-                              {STATUS_LABEL[invoice.status]}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => router.push(`/app?invoiceId=${invoice.id}`)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                                Open
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void onDuplicate(invoice.id)}
-                                disabled={duplicatingId === invoice.id}
-                                className="rounded-md border border-indigo-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {duplicatingId === invoice.id ? 'Duplicating...' : 'Duplicate'}
-                              </button>
-                              <select
-                                value={invoice.status}
-                                onChange={(e) => void updateStatus(invoice.id, e.target.value as InvoiceStatus)}
-                                className="h-9 w-[110px] rounded-md border border-slate-200 px-2 text-xs"
-                              >
-                                {STATUS_ORDER.map((status) => (
-                                  <option key={status} value={status}>{STATUS_LABEL[status]}</option>
-                                ))}
-                              </select>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmState({ type: 'deleteOne', id: invoice.id })}
-                                className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-3 md:hidden">
-                {filtered.map((invoice) => (
-                  <article
-                    key={invoice.id}
-                    className="relative overflow-hidden rounded-xl border border-slate-200 bg-white"
-                    onTouchStart={(e) => setTouchStartX(e.touches[0]?.clientX ?? null)}
-                    onTouchMove={(e) => {
-                      if (touchStartX === null) return;
-                      const delta = (e.touches[0]?.clientX ?? 0) - touchStartX;
-                      if (delta < -42) setSwipedId(invoice.id);
-                      if (delta > 22) setSwipedId(null);
-                    }}
-                    onTouchEnd={() => setTouchStartX(null)}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setConfirmState({ type: 'deleteOne', id: invoice.id })}
-                      className={`absolute inset-y-0 right-0 w-[92px] bg-red-600 text-sm font-semibold text-white transition-transform ${
-                        swipedId === invoice.id ? 'translate-x-0' : 'translate-x-full'
-                      }`}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                    <th className="py-5 pr-4 font-semibold">{t('invoices.table.invoice')}</th>
+                    <th className="py-5 pr-4 font-semibold">{t('invoices.table.client')}</th>
+                    <th className="py-5 pr-4 font-semibold">{t('invoices.table.dueDate')}</th>
+                    <th className="py-5 pr-4 font-semibold">{t('invoices.table.amount')}</th>
+                    <th className="py-5 pr-4 font-semibold">{t('invoices.table.status')}</th>
+                    <th className="py-5 pl-4 text-right font-semibold">{t('invoices.table.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((invoice, index) => (
+                    <tr
+                      key={invoice.id}
+                      className="group cursor-pointer border-b border-slate-200 transition-colors duration-150 hover:bg-slate-50/60"
+                      onClick={() => router.push(`/app?invoiceId=${invoice.id}`)}
                     >
-                      Delete
-                    </button>
-                    <div className={`space-y-2 p-4 transition-transform ${swipedId === invoice.id ? '-translate-x-[92px]' : 'translate-x-0'}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-mono text-sm font-bold text-indigo-700">{invoice.invoiceNumber}</p>
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CLASSES[invoice.status]}`}>
-                          {STATUS_LABEL[invoice.status]}
+                      <td className="py-7 pr-4">
+                        <p className="font-mono text-base font-semibold text-indigo-600">{invoice.invoiceNumber}</p>
+                        <p className="mt-1 font-mono text-[11px] font-semibold text-slate-600">#{String(filtered.length - index).padStart(4, '0')}</p>
+                      </td>
+                      <td className="py-7 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-[11px] font-semibold text-indigo-700">{getInitials(invoice.clientName)}</div>
+                          <span className="text-xs text-slate-700">{invoice.clientName}</span>
+                        </div>
+                      </td>
+                      <td className={`py-7 pr-4 text-xs ${invoice.status === 'overdue' ? 'text-rose-600' : 'text-slate-700'}`}>{formatDate(invoice.dueDate)}</td>
+                      <td className="py-7 pr-4 text-base font-semibold text-slate-900">{formatMoney(invoice.total, invoice.currency)}</td>
+                      <td className="py-7 pr-4">
+                        <span className={`inline-flex items-center gap-1.5 rounded-none px-2 py-1 text-[11px] font-semibold ${STATUS_BADGE_CLASSES[invoice.status]}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASSES[invoice.status]}`} aria-hidden="true" />
+                          {getStatusLabel(invoice.status)}
                         </span>
-                      </div>
-                      <p className="text-sm text-slate-700">{invoice.clientName}</p>
-                      <p className="text-sm font-bold text-slate-900">{formatMoney(invoice.total, invoice.currency)}</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
-                        <p>Issue: {formatDate(invoice.issueDate)}</p>
-                        <p className={invoice.status === 'overdue' ? 'text-red-600' : ''}>Due: {formatDate(invoice.dueDate)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => router.push(`/app?invoiceId=${invoice.id}`)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
-                          Open
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void onDuplicate(invoice.id)}
-                          disabled={duplicatingId === invoice.id}
-                          className="w-full rounded-md border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {duplicatingId === invoice.id ? 'Duplicating...' : 'Duplicate'}
-                        </button>
-                        <select
-                          value={invoice.status}
-                          onChange={(e) => void updateStatus(invoice.id, e.target.value as InvoiceStatus)}
-                          className="h-10 w-full rounded-md border border-slate-200 px-2 text-sm"
-                        >
-                          {STATUS_ORDER.map((status) => (
-                            <option key={status} value={status}>{STATUS_LABEL[status]}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </>
+                      </td>
+                      <td className="py-7 pl-4 text-right">
+                        <div className="relative inline-flex" data-invoice-menu="true">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuInvoiceId((prev) => (prev === invoice.id ? null : invoice.id));
+                            }}
+                            className="h-8 min-h-0 w-8 min-w-0 text-2xl leading-none text-slate-500 transition-colors hover:text-slate-700"
+                            aria-label={t('invoices.actions.openMenuAria')}
+                          >
+                            ⋯
+                          </button>
+                          {menuInvoiceId === invoice.id ? (
+                            <div className="absolute right-0 top-9 z-20 w-36 border border-slate-100 bg-white py-1">
+                              {actionItems(invoice.id).map((item) => (
+                                <button
+                                  key={item.label}
+                                  type="button"
+                                  disabled={item.disabled}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuInvoiceId(null);
+                                    item.onClick();
+                                  }}
+                                  className={`h-auto w-full min-h-0 min-w-0 px-3 py-2 text-left text-sm ${
+                                    item.destructive ? 'text-rose-500 hover:bg-slate-50' : 'text-slate-500 hover:bg-slate-50'
+                                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
+
+          {!isLoading && filtered.length > 0 ? (
+            <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+              <p>{t('invoices.pagination.showing', { from: 1, to: filtered.length, total: filtered.length })}</p>
+              <div className="flex items-center gap-3">
+                <button type="button" className="h-9 min-h-0 w-9 min-w-0 rounded-none border border-slate-200 text-xl text-slate-400">
+                  ‹
+                </button>
+                <button type="button" className="h-9 min-h-0 w-9 min-w-0 rounded-none border border-indigo-300 text-sm font-semibold text-indigo-600">
+                  1
+                </button>
+                <button type="button" className="h-9 min-h-0 w-9 min-w-0 rounded-none border border-slate-200 text-xl text-slate-400">
+                  ›
+                </button>
+              </div>
+            </div>
+          ) : null}
         </main>
       </div>
 
-      {selectedIds.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-3 z-40 px-4">
-          <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white px-4 py-3 shadow-2xl" style={{ borderColor: 'var(--color-border)' }}>
-            <p className="text-sm font-semibold text-slate-700">{selectedIds.length} invoices selected</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => void onBulkMarkPaid()} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                Mark as Paid
-              </button>
-              <button type="button" onClick={() => setConfirmState({ type: 'deleteSelected' })} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700">
-                Delete Selected
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {confirmState?.type === 'deleteOne' && confirmState.id ? (
+      {confirmState?.type === 'deleteOne' ? (
         <ConfirmModal
-          title="Delete invoice"
-          description="This action cannot be undone."
-          confirmLabel="Delete"
+          title={t('invoices.modal.deleteTitle')}
+          description={t('invoices.modal.deleteDescription')}
+          confirmLabel={t('common.delete')}
           onCancel={() => setConfirmState(null)}
           onConfirm={() => {
-            void onDeleteOne(confirmState.id!);
-            setConfirmState(null);
-          }}
-        />
-      ) : null}
-
-      {confirmState?.type === 'deleteSelected' ? (
-        <ConfirmModal
-          title="Delete selected invoices"
-          description="This action cannot be undone."
-          confirmLabel="Delete Selected"
-          onCancel={() => setConfirmState(null)}
-          onConfirm={() => {
-            void onDeleteSelected();
+            void onDeleteOne(confirmState.id);
             setConfirmState(null);
           }}
         />
