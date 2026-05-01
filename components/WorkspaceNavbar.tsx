@@ -46,6 +46,7 @@ const SidebarItem = ({
 );
 
 export default function WorkspaceNavbar({ displayName, plan }: WorkspaceNavbarProps) {
+  const isSettingsEnabled = process.env.NEXT_PUBLIC_ENABLE_SETTINGS === 'true';
   const { user } = useUser();
   const pathname = usePathname();
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function WorkspaceNavbar({ displayName, plan }: WorkspaceNavbarPr
   const isClients = pathname.startsWith('/clients');
   const isNewInvoice = pathname.startsWith('/app');
   const isTemplates = pathname.startsWith('/templates');
+  const isSettings = pathname.startsWith('/settings');
   const isAdmin = (user?.publicMetadata as { role?: string } | undefined)?.role === 'admin';
   const isFreePlan = plan === 'free';
 
@@ -181,11 +183,11 @@ export default function WorkspaceNavbar({ displayName, plan }: WorkspaceNavbarPr
                 <path d="M5 7a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm8 1a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM3 15a4 4 0 1 1 8 0v1H3v-1Zm10-3a3 3 0 0 1 3 3v1h-4v-1a5.9 5.9 0 0 0-.73-2.82A2.98 2.98 0 0 1 13 12Z" />
               </svg>
             </SidebarItem>
-            <SidebarItem href="/app" label="Products & Services" active={false} disabled collapsed={isSidebarCollapsed}>
+            {/* <SidebarItem href="/app" label="Products & Services" active={false} disabled collapsed={isSidebarCollapsed}>
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M3 5a2 2 0 0 1 2-2h1.38a2 2 0 0 1 1.79 1.11L9 6h6a2 2 0 0 1 1.94 2.47l-.8 3.2A2 2 0 0 1 14.2 13H7.3a2 2 0 0 1-1.94-1.52L4.1 6.4A1 1 0 0 0 3.12 5.6H3V5Z" />
               </svg>
-            </SidebarItem>
+            </SidebarItem> */}
             <SidebarItem href="/templates" label="Templates" active={isTemplates} collapsed={isSidebarCollapsed}>
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M3 4a2 2 0 0 1 2-2h3v16H5a2 2 0 0 1-2-2V4Zm7-2h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5V2Z" />
@@ -196,16 +198,18 @@ export default function WorkspaceNavbar({ displayName, plan }: WorkspaceNavbarPr
                 <path d="M2 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H2V5Zm0 3h16v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8Zm4 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2H6Z" />
               </svg>
             </SidebarItem>
-            <SidebarItem href="/app" label="Reports" active={false} disabled collapsed={isSidebarCollapsed}>
+            {/* <SidebarItem href="/app" label="Reports" active={false} disabled collapsed={isSidebarCollapsed}>
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M3 3h14v2H3V3Zm1 4h3v10H4V7Zm5 3h3v7H9v-7Zm5-5h3v12h-3V5Z" />
               </svg>
-            </SidebarItem>
-            <SidebarItem href="/app" label="Settings" active={false} disabled collapsed={isSidebarCollapsed}>
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path d="M10 6.5A3.5 3.5 0 1 0 10 13.5 3.5 3.5 0 0 0 10 6.5Zm8 3.5-.9-.3a7.7 7.7 0 0 0-.47-1.12l.52-.8a1 1 0 0 0-.12-1.27l-1.5-1.5a1 1 0 0 0-1.27-.12l-.8.52c-.36-.18-.73-.34-1.12-.47L12 2h-4l-.3.9c-.39.13-.76.29-1.12.47l-.8-.52a1 1 0 0 0-1.27.12l-1.5 1.5a1 1 0 0 0-.12 1.27l.52.8c-.18.36-.34.73-.47 1.12L2 10v4l.9.3c.13.39.29.76.47 1.12l-.52.8a1 1 0 0 0 .12 1.27l1.5 1.5a1 1 0 0 0 1.27.12l.8-.52c.36.18.73.34 1.12.47L8 18h4l.3-.9c.39-.13.76-.29 1.12-.47l.8.52a1 1 0 0 0 1.27-.12l1.5-1.5a1 1 0 0 0 .12-1.27l-.52-.8c.18-.36.34-.73.47-1.12l.9-.3v-4Z" />
-              </svg>
-            </SidebarItem>
+            </SidebarItem> */}
+            {isSettingsEnabled ? (
+              <SidebarItem href="/settings" label="Settings" active={isSettings} collapsed={isSidebarCollapsed}>
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path d="M10 6.5A3.5 3.5 0 1 0 10 13.5 3.5 3.5 0 0 0 10 6.5Zm8 3.5-.9-.3a7.7 7.7 0 0 0-.47-1.12l.52-.8a1 1 0 0 0-.12-1.27l-1.5-1.5a1 1 0 0 0-1.27-.12l-.8.52c-.36-.18-.73-.34-1.12-.47L12 2h-4l-.3.9c-.39.13-.76.29-1.12.47l-.8-.52a1 1 0 0 0-1.27.12l-1.5 1.5a1 1 0 0 0-.12 1.27l.52.8c-.18.36-.34.73-.47 1.12L2 10v4l.9.3c.13.39.29.76.47 1.12l-.52.8a1 1 0 0 0 .12 1.27l1.5 1.5a1 1 0 0 0 1.27.12l.8-.52c.36.18.73.34 1.12.47L8 18h4l.3-.9c.39-.13.76-.29 1.12-.47l.8.52a1 1 0 0 0 1.27-.12l1.5-1.5a1 1 0 0 0 .12-1.27l-.52-.8c.18-.36.34-.73.47-1.12l.9-.3v-4Z" />
+                </svg>
+              </SidebarItem>
+            ) : null}
           </div>
 
           <div className="mt-auto">
