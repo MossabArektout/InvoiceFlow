@@ -16,13 +16,13 @@ const hasClerkKeys = Boolean(
 );
 
 const authMiddleware = clerkMiddleware(async (auth, req) => {
-  const { userId, redirectToSignIn } = await auth();
+  const { userId, sessionId, redirectToSignIn } = await auth();
 
-  if (!userId && isProtectedRoute(req)) {
+  if ((!userId || !sessionId) && isProtectedRoute(req)) {
     return redirectToSignIn({ returnBackUrl: req.url });
   }
 
-  if (userId && isAuthRoute(req)) {
+  if (userId && sessionId && isAuthRoute(req)) {
     return Response.redirect(new URL('/app', req.url));
   }
 

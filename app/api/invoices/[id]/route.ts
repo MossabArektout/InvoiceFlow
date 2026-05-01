@@ -17,8 +17,8 @@ export async function PUT(request: Request, { params }: Params) {
     if (csrfError) return csrfError;
 
     const supabaseServer = createSupabaseServerClient();
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId, sessionId } = await auth();
+    if (!userId || !sessionId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -135,8 +135,8 @@ export async function DELETE(request: Request, { params }: Params) {
     if (csrfError) return csrfError;
 
     const supabaseServer = createSupabaseServerClient();
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId, sessionId } = await auth();
+    if (!userId || !sessionId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

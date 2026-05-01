@@ -8,8 +8,8 @@ const isAdminFromUser = async () => {
 };
 
 export const requireAdminPageAccess = async () => {
-  const { userId } = await auth();
-  if (!userId) {
+  const { userId, sessionId } = await auth();
+  if (!userId || !sessionId) {
     redirect('/sign-in');
   }
 
@@ -24,8 +24,8 @@ export const requireAdminPageAccess = async () => {
 };
 
 export const requireAdminApiAccess = async () => {
-  const { userId } = await auth();
-  if (!userId) {
+  const { userId, sessionId } = await auth();
+  if (!userId || !sessionId) {
     return { userId, isAdmin: false };
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { type UserPlan, normalizePlan } from '@/lib/plans';
 import InvoiceApp from './InvoiceApp';
@@ -25,6 +25,7 @@ const Toast = ({ message }: { message: string }) => (
 
 export default function AppWorkspace() {
   const { user } = useUser();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -43,6 +44,9 @@ export default function AppWorkspace() {
         const response = await fetch('/api/user/me');
         if (!response.ok) {
           setPlan('free');
+          if (response.status === 401) {
+            router.replace('/sign-in');
+          }
           return;
         }
         const body = (await response.json()) as { plan?: string };
@@ -52,7 +56,7 @@ export default function AppWorkspace() {
       }
     };
     void bootstrapUser();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const welcome = searchParams.get('welcome');

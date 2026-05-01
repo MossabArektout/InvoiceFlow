@@ -25,8 +25,8 @@ const sumTotals = (rows: InvoiceRow[]) => rows.reduce((sum, row) => sum + Number
 
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId, sessionId } = await auth();
+    if (!userId || !sessionId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

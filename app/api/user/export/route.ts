@@ -12,8 +12,8 @@ export async function POST(request: Request) {
     const csrfError = enforceSameOrigin(request);
     if (csrfError) return csrfError;
 
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId, sessionId } = await auth();
+    if (!userId || !sessionId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
