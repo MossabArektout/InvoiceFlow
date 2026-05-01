@@ -163,7 +163,7 @@ const AnimatedNumber = ({ value, formatter }: { value: number; formatter: (value
   return <>{formatter(display)}</>;
 };
 
-const Skeleton = ({ className }: { className: string }) => <div className={`animate-pulse rounded-xl bg-slate-200 ${className}`} />;
+const Skeleton = ({ className }: { className: string }) => <div className={`animate-pulse rounded-none bg-slate-200 ${className}`} />;
 
 const RevenueTooltip = ({
   active,
@@ -357,73 +357,56 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="workspace-bg min-h-screen text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       <WorkspaceNavbar displayName={displayName} plan={plan} />
       {toastMessage ? (
-        <div className="toast-spring fixed right-4 top-20 z-50 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-lg">
+        <div className="toast-spring fixed right-4 top-20 z-50 rounded-none border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-lg">
           {toastMessage}
         </div>
       ) : null}
       <div className="md:pl-[var(--workspace-sidebar-width)]">
-        <main className="mx-auto w-full max-w-[1700px] space-y-6 p-4 pb-24 md:p-5 lg:p-6 lg:pb-8">
-        <section className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <main className="mx-auto w-full max-w-[1600px] space-y-4 p-4 pb-24 md:p-8">
+        <section className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{getGreeting(firstName)}</h1>
-            <p className="mt-1 text-sm text-slate-500">Here&apos;s what&apos;s happening with your business</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{getGreeting(firstName)}</h1>
+            <p className="mt-1 text-sm text-slate-500">Here&apos;s what&apos;s happening with your invoices.</p>
           </div>
-          <Link href="/app" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+          <Link href="/app" className="inline-flex items-center rounded-none bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-indigo-700">
             New Invoice
           </Link>
         </section>
 
-        <section className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md" style={{ borderLeft: '4px solid #16a34a' }}>
+        <section className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-2.5 xl:grid-cols-3">
+          <article className="border border-slate-200 bg-white p-3.5" style={{ borderLeft: '4px solid #16a34a' }}>
             {isLoading || !stats ? (
               <Skeleton className="h-16 w-full" />
             ) : (
               <>
-                <p className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">💲</p>
-                <p className="mt-3 text-xl font-extrabold text-slate-900 md:text-2xl">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Total Revenue</p>
+                <p className="mt-2 text-base font-extrabold text-slate-900 md:text-lg">
                   <AnimatedNumber value={stats.revenue.total} formatter={formatMoney} />
                 </p>
-                <p className="text-sm font-semibold text-slate-700">Total Revenue</p>
-                <p className="text-xs text-slate-500">All time</p>
+                <p className="text-[11px] text-slate-500">All time</p>
               </>
             )}
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md" style={{ borderLeft: '4px solid #4f46e5' }}>
+          <article className="border border-slate-200 bg-white p-3.5" style={{ borderLeft: '4px solid #4f46e5' }}>
             {isLoading || !stats ? (
               <Skeleton className="h-16 w-full" />
             ) : (
               <>
-                <p className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">📅</p>
-                <p className="mt-3 text-xl font-extrabold text-slate-900 md:text-2xl">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700">This Month</p>
+                <p className="mt-2 text-base font-extrabold text-slate-900 md:text-lg">
                   <AnimatedNumber value={stats.revenue.thisMonth} formatter={formatMoney} />
                 </p>
-                <p className="text-sm font-semibold text-slate-700">This Month</p>
                 {growthText}
               </>
             )}
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md" style={{ borderLeft: '4px solid #d97706' }}>
-            {isLoading || !stats ? (
-              <Skeleton className="h-16 w-full" />
-            ) : (
-              <>
-                <p className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700">🕒</p>
-                <p className="mt-3 text-xl font-extrabold text-slate-900 md:text-2xl">
-                  <AnimatedNumber value={stats.outstanding} formatter={formatMoney} />
-                </p>
-                <p className="text-sm font-semibold text-slate-700">Outstanding</p>
-                <p className="text-xs text-slate-500">{stats.invoices.sent} invoices waiting</p>
-              </>
-            )}
-          </article>
-
           <article
-            className={`rounded-2xl border p-5 shadow-sm transition hover:shadow-md ${
+            className={`border p-3.5 ${
               stats && stats.overdue_amount > 0 ? 'border-red-200 bg-red-50/50' : 'border-slate-200 bg-white'
             }`}
             style={{ borderLeft: '4px solid #dc2626' }}
@@ -432,15 +415,14 @@ export default function DashboardPage() {
               <Skeleton className="h-16 w-full" />
             ) : (
               <>
-                <p className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">⚠️</p>
-                <p className="mt-3 text-xl font-extrabold text-slate-900 md:text-2xl">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">Overdue</p>
+                <p className="mt-2 text-base font-extrabold text-slate-900 md:text-lg">
                   <AnimatedNumber value={stats.overdue_amount} formatter={formatMoney} />
                 </p>
-                <p className="text-sm font-semibold text-slate-700">Overdue</p>
                 {stats.invoices.overdue > 0 ? (
-                  <p className="text-xs text-red-600">{stats.invoices.overdue} invoices overdue</p>
+                  <p className="text-[11px] text-red-600">{stats.invoices.overdue} invoices overdue</p>
                 ) : (
-                  <p className="text-xs text-emerald-600">All caught up! ✓</p>
+                  <p className="text-[11px] text-emerald-600">All caught up! ✓</p>
                 )}
               </>
             )}
@@ -448,30 +430,30 @@ export default function DashboardPage() {
         </section>
 
         {!isLoading && stats && !hasInvoices ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <section className="border border-slate-200 bg-white p-8 text-center">
             <p className="text-xl font-bold text-slate-900">Welcome to your dashboard! 🎉</p>
             <p className="mt-2 text-slate-600">Create your first invoice to start seeing your business stats here.</p>
-            <Link href="/app" className="mt-5 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+            <Link href="/app" className="mt-5 inline-flex rounded-none bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
               Create First Invoice
             </Link>
           </section>
         ) : (
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
+            <article className="border border-slate-200 bg-white p-5 xl:col-span-3">
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <h2 className="text-lg font-bold text-slate-900">Revenue Overview</h2>
-                <div className="inline-flex w-full rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold md:w-auto">
+                <h2 className="text-lg font-semibold text-slate-900">Revenue Overview</h2>
+                <div className="inline-flex w-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold md:w-auto">
                   <button
                     type="button"
                     onClick={() => setPeriod('6months')}
-                    className={`w-1/2 rounded-full px-3 py-2 md:w-auto ${period === '6months' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
+                    className={`w-1/2 px-3 py-2 md:w-auto ${period === '6months' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
                   >
                     6 months
                   </button>
                   <button
                     type="button"
                     onClick={() => setPeriod('12months')}
-                    className={`w-1/2 rounded-full px-3 py-2 md:w-auto ${period === '12months' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
+                    className={`w-1/2 px-3 py-2 md:w-auto ${period === '12months' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
                   >
                     12 months
                   </button>
@@ -481,7 +463,7 @@ export default function DashboardPage() {
               {isChartLoading ? (
                 <Skeleton className="h-[220px] w-full md:h-[280px]" />
               ) : !hasRevenueData ? (
-                <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-500 md:h-[280px]">
+                <div className="flex h-[220px] items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-500 md:h-[280px]">
                   No revenue data yet. Mark invoices as paid to see your stats.
                 </div>
               ) : (
@@ -505,12 +487,12 @@ export default function DashboardPage() {
               )}
             </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
-              <h2 className="text-lg font-bold text-slate-900">Invoice Status</h2>
+            <article className="border border-slate-200 bg-white p-5 xl:col-span-2">
+              <h2 className="text-lg font-semibold text-slate-900">Invoice Status</h2>
               {isLoading || !stats ? (
                 <Skeleton className="mt-4 h-[270px] w-full" />
               ) : stats.invoices.total === 0 ? (
-                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                <div className="mt-4 border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                   No invoices yet.
                 </div>
               ) : (
@@ -533,7 +515,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {donutData.map((item) => (
-                      <div key={item.key} className="rounded-lg border border-slate-200 p-2 text-sm">
+                      <div key={item.key} className="border border-slate-200 p-2 text-sm">
                         <div className="inline-flex items-center gap-2">
                           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                           <span className="text-slate-700">{item.name}</span>
@@ -550,10 +532,10 @@ export default function DashboardPage() {
           </section>
         )}
 
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-20">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-13">
+        <section className="grid grid-cols-1 gap-4">
+          <article className="border border-slate-200 bg-white p-5">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <h2 className="text-lg font-bold text-slate-900">Top Clients</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Top Clients</h2>
               <Link href="/invoices" className="text-sm font-semibold text-indigo-700 hover:text-indigo-800">
                 View Invoices
               </Link>
@@ -565,7 +547,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : topClients.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+              <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                 No client data yet.
               </div>
             ) : (
@@ -575,7 +557,7 @@ export default function DashboardPage() {
                     key={client.name}
                     type="button"
                     onClick={() => router.push(`/invoices?search=${encodeURIComponent(client.name)}`)}
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+                    className="flex w-full items-center justify-between border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">
@@ -588,57 +570,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-7">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
-              <button
-                type="button"
-                onClick={() => router.push('/app')}
-                className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
-              >
-                <p className="text-sm font-bold text-indigo-700">＋ New Invoice</p>
-                <p className="mt-1 text-xs text-slate-500">Create a new invoice</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/clients')}
-                className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
-              >
-                <p className="text-sm font-bold text-emerald-700">👤 Add Client</p>
-                <p className="mt-1 text-xs text-slate-500">Save a new client</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/invoices?status=overdue')}
-                className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-red-300 hover:bg-red-50"
-              >
-                <p className="text-sm font-bold text-red-700">⚠ View Overdue</p>
-                <p className={`mt-1 text-xs ${(stats?.invoices.overdue ?? 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {(stats?.invoices.overdue ?? 0) > 0 ? `${stats?.invoices.overdue ?? 0} invoices need attention` : 'All invoices are up to date ✓'}
-                </p>
-              </button>
-              {plan !== 'free' ? (
-                <button
-                  type="button"
-                  onClick={() => void exportAllInvoices()}
-                  className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
-                >
-                  <p className="text-sm font-bold text-indigo-700">⬇ Export All Invoices</p>
-                  <p className="mt-1 text-xs text-slate-500">Download all as CSV</p>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsComingSoonOpen(true)}
-                  className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-amber-300 hover:bg-amber-50"
-                >
-                  <p className="text-sm font-bold text-amber-700">⚡ Upgrade to Creator</p>
-                  <p className="mt-1 text-xs text-slate-500">Unlock all templates + no watermark</p>
-                </button>
-              )}
-            </div>
           </article>
         </section>
         <ComingSoonModal isOpen={isComingSoonOpen} onClose={() => setIsComingSoonOpen(false)} plan="creator" defaultEmail={user?.primaryEmailAddress?.emailAddress} />
