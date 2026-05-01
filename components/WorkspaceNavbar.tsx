@@ -193,11 +193,11 @@ export default function WorkspaceNavbar({ displayName, plan }: WorkspaceNavbarPr
                 <path d="M3 4a2 2 0 0 1 2-2h3v16H5a2 2 0 0 1-2-2V4Zm7-2h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5V2Z" />
               </svg>
             </SidebarItem>
-            <SidebarItem href="/app" label="Payments" active={false} disabled collapsed={isSidebarCollapsed}>
+            {/* <SidebarItem href="/app" label="Payments" active={false} disabled collapsed={isSidebarCollapsed}>
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M2 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H2V5Zm0 3h16v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8Zm4 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2H6Z" />
               </svg>
-            </SidebarItem>
+            </SidebarItem> */}
             {/* <SidebarItem href="/app" label="Reports" active={false} disabled collapsed={isSidebarCollapsed}>
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M3 3h14v2H3V3Zm1 4h3v10H4V7Zm5 3h3v7H9v-7Zm5-5h3v12h-3V5Z" />

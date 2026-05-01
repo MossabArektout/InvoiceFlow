@@ -13,6 +13,8 @@ const messageByMode: Record<string, string> = {
   signin: 'Welcome back! 👋'
 };
 
+const isTemplatePreviewQuery = (query: string) => new URLSearchParams(query).get('preview') === 'template';
+
 const Toast = ({ message }: { message: string }) => (
   <div className="toast-spring fixed left-1/2 top-20 z-50 w-[min(92vw,520px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[0_10px_40px_rgba(15,23,42,0.15)]">
     <div className="flex items-center gap-3 border-l-4 border-emerald-500 px-5 py-4">
@@ -31,13 +33,18 @@ export default function AppWorkspace() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [plan, setPlan] = useState<UserPlan>('free');
   const [showSignupInvoicePage, setShowSignupInvoicePage] = useState(false);
+  const isTemplatePreviewOnly = searchParams.get('preview') === 'template';
 
   const displayName = useMemo(() => {
     if (!user) return '';
     return user.fullName || user.primaryEmailAddress?.emailAddress || user.username || 'User';
   }, [user]);
 
+  const isTemplatePreviewRuntime = () =>
+    isTemplatePreviewOnly || (typeof window !== 'undefined' && isTemplatePreviewQuery(window.location.search));
+
   useEffect(() => {
+    if (isTemplatePreviewRuntime()) return;
     const bootstrapUser = async () => {
       try {
         await fetch('/api/user/sync', { method: 'POST' });
@@ -56,9 +63,10 @@ export default function AppWorkspace() {
       }
     };
     void bootstrapUser();
-  }, [router]);
+  }, [isTemplatePreviewOnly, router]);
 
   useEffect(() => {
+    if (isTemplatePreviewRuntime()) return;
     const welcome = searchParams.get('welcome');
     if (!welcome || !messageByMode[welcome]) return;
 
@@ -73,7 +81,7 @@ export default function AppWorkspace() {
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', pathname);
     }
-  }, [pathname, searchParams]);
+  }, [isTemplatePreviewOnly, pathname, searchParams]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -83,9 +91,15 @@ export default function AppWorkspace() {
 
   return (
     <>
-      <WorkspaceNavbar displayName={displayName} plan={plan} />
-      {toastMessage ? <Toast message={toastMessage} /> : null}
-      {showSignupInvoicePage ? <PostSignupInvoicePage onContinue={() => setShowSignupInvoicePage(false)} /> : <InvoiceApp />}
+      {isTemplatePreviewOnly ? null : <WorkspaceNavbar displayName={displayName} plan={plan} />}
+      {isTemplatePreviewOnly ? null : toastMessage ? <Toast message={toastMessage} /> : null}
+      {isTemplatePreviewOnly ? (
+        <InvoiceApp />
+      ) : showSignupInvoicePage ? (
+        <PostSignupInvoicePage onContinue={() => setShowSignupInvoicePage(false)} />
+      ) : (
+        <InvoiceApp />
+      )}
     </>
   );
 }

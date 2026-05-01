@@ -255,6 +255,7 @@ const formatCurrency = (value: number, currencyCode: CurrencyCode) => {
 
 const CURRENCY_STORAGE_KEY = 'invoiceflow_currency';
 const FREE_TEMPLATE: TemplateId = 'minimal';
+const FREE_TEMPLATE_IDS: TemplateId[] = ['minimal', 'compact-receipt', 'service-hours'];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -316,6 +317,47 @@ const createInitialData = (invoiceNumber = 'INV-001'): InvoiceData => ({
   signatureMode: 'upload',
   signatureDataUrl: '',
   items: [createEmptyItem()]
+});
+
+const createTemplatePreviewData = (): InvoiceData => ({
+  from: {
+    name: 'InvoiceFlow Studio',
+    email: 'hello@invoiceflow.app',
+    address: '120 Market Street\nSan Francisco, CA 94103'
+  },
+  to: {
+    name: 'Acme Ventures LLC',
+    email: 'billing@acmeventures.com',
+    address: '88 Madison Ave\nNew York, NY 10016'
+  },
+  invoiceNumber: 'INV-1042',
+  issueDate: todayISO(),
+  dueDate: addDaysISO(14),
+  status: 'sent',
+  notes: 'Thank you for your business. Please include invoice number with payment.',
+  paymentTerms: 'Bank transfer within 14 days',
+  discountType: 'percentage',
+  discountValue: '5',
+  shippingFee: '25',
+  taxPercent: '8.5',
+  signatureMode: 'upload',
+  signatureDataUrl: '',
+  items: [
+    {
+      id: crypto.randomUUID(),
+      description: 'Website design system and UI kit',
+      quantity: '1',
+      unitPrice: '2400',
+      discountPercent: '0'
+    },
+    {
+      id: crypto.randomUUID(),
+      description: 'Frontend implementation (20 hours)',
+      quantity: '20',
+      unitPrice: '95',
+      discountPercent: '0'
+    }
+  ]
 });
 
 const TEMPLATES: { id: TemplateId; name: string }[] = [
@@ -504,6 +546,13 @@ const toTaxPercent = (subtotal: number, tax: number) => {
 const isTemplateId = (value: string): value is TemplateId =>
   TEMPLATES.some((template) => template.id === value);
 
+const getPreviewModeFromQuery = (query: string) => new URLSearchParams(query).get('preview') === 'template';
+
+const getTemplateFromQuery = (query: string): TemplateId | null => {
+  const value = new URLSearchParams(query).get('template');
+  return value && isTemplateId(value) ? value : null;
+};
+
 const mapApiInvoice = (invoice: ApiInvoice): SavedInvoice => ({
   id: invoice.id,
   from: {
@@ -636,6 +685,7 @@ function InvoiceApp() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isTemplatePreviewOnly = searchParams.get('preview') === 'template';
   const {
     data,
     setData,
@@ -660,7 +710,7 @@ function InvoiceApp() {
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [comingSoonPlan, setComingSoonPlan] = useState<'creator' | 'pro'>('creator');
   const [isExportLimitModalOpen, setIsExportLimitModalOpen] = useState(false);
-  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isAppLoading, setIsAppLoading] = useState(() => !isTemplatePreviewOnly);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
@@ -700,8 +750,8 @@ function InvoiceApp() {
   ];
   const hasPaidPlan = plan === 'creator' || plan === 'pro';
   const unlockedTemplateIds = useMemo<TemplateId[]>(
-    () => (hasPaidPlan ? TEMPLATES.map((template) => template.id) : [FREE_TEMPLATE]),
-    [hasPaidPlan]
+    () => (isTemplatePreviewOnly || hasPaidPlan ? TEMPLATES.map((template) => template.id) : FREE_TEMPLATE_IDS),
+    [hasPaidPlan, isTemplatePreviewOnly]
   );
   const exportLimit = PLAN_EXPORT_LIMITS[plan];
   const exportsRemaining = Math.max(0, exportLimit - exportsThisMonth);
@@ -709,6 +759,8 @@ function InvoiceApp() {
   const exportCounterTextColor =
     exportsRemaining === 0 ? 'text-red-600' : exportsUsedPercent >= 75 ? 'text-amber-600' : 'text-slate-500';
   const { isDarkMode, setIsDarkMode } = useDarkMode();
+  const isTemplatePreviewRuntime = () =>
+    isTemplatePreviewOnly || (typeof window !== 'undefined' && getPreviewModeFromQuery(window.location.search));
 
   const isTemplateUnlocked = (templateId: TemplateId) => unlockedTemplateIds.includes(templateId);
   const logoDisplayUrl = logoPreviewUrl ?? logoUrl;
@@ -841,6 +893,7 @@ function InvoiceApp() {
   });
 
   useEffect(() => {
+    if (isTemplatePreviewRuntime()) return;
     let isMounted = true;
 
     const loadInitialData = async () => {
@@ -882,7 +935,17 @@ function InvoiceApp() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isTemplatePreviewOnly]);
+
+  useEffect(() => {
+    if (!isTemplatePreviewOnly) return;
+    setData(createTemplatePreviewData());
+    setIsDiscountVisible(true);
+    setIsAppLoading(false);
+    setIsInvoicesLoading(false);
+    setIsClientsLoading(false);
+    setIsLogoLoading(false);
+  }, [isTemplatePreviewOnly, setData, setIsClientsLoading, setIsDiscountVisible, setIsInvoicesLoading]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -926,10 +989,11 @@ function InvoiceApp() {
   }, [selectedTemplate]);
 
   useEffect(() => {
+    if (isTemplatePreviewRuntime()) return;
     if (!unlockedTemplateIds.includes(selectedTemplate)) {
       setSelectedTemplate(FREE_TEMPLATE);
     }
-  }, [selectedTemplate, unlockedTemplateIds]);
+  }, [isTemplatePreviewOnly, selectedTemplate, unlockedTemplateIds]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1282,6 +1346,15 @@ function InvoiceApp() {
 
 
   useEffect(() => {
+    if (!isTemplatePreviewRuntime()) return;
+    const template = searchParams.get('template') ?? (typeof window !== 'undefined' ? getTemplateFromQuery(window.location.search) : null);
+    if (template && isTemplateId(template)) {
+      setSelectedTemplate(template);
+    }
+  }, [isTemplatePreviewOnly, searchParams]);
+
+  useEffect(() => {
+    if (isTemplatePreviewOnly) return;
     if (isAppLoading) return;
     const key = searchParams.toString();
     if (!key || consumedQueryActionsRef.current === key) return;
@@ -1318,7 +1391,7 @@ function InvoiceApp() {
     if (!consumed) return;
     consumedQueryActionsRef.current = key;
     router.replace(pathname);
-  }, [handleTemplateSelect, isAppLoading, openClientModal, openSavedInvoice, pathname, router, savedInvoices, searchParams]);
+  }, [handleTemplateSelect, isAppLoading, isTemplatePreviewOnly, openClientModal, openSavedInvoice, pathname, router, savedInvoices, searchParams]);
 
   const deleteSavedInvoice = async (invoiceId: string) => {
     setConfirmDialog({
@@ -1460,6 +1533,18 @@ function InvoiceApp() {
     );
   }
 
+  if (isTemplatePreviewOnly) {
+    return (
+      <div className="min-h-screen bg-slate-100 p-3 sm:p-5">
+        <div className="mx-auto w-full max-w-[900px] overflow-auto border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
+          <div ref={invoiceRef} className="mx-auto w-full max-w-[794px] break-words [overflow-wrap:anywhere] bg-white">
+            {renderSelectedTemplate()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="workspace-bg min-h-screen text-slate-900">
       {toastMessage ? <Toast message={toastMessage} /> : null}
@@ -1488,7 +1573,7 @@ function InvoiceApp() {
               >
                 {exportsThisMonth} / {exportLimit} exports
               </span>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setIsDarkMode((prev) => !prev)}
                 title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -1502,10 +1587,10 @@ function InvoiceApp() {
                     <path d="M13.27 2.44a.75.75 0 0 1 .3 1.03 6.25 6.25 0 1 0 2.96 8.22.75.75 0 0 1 1.37.61 7.75 7.75 0 1 1-4.63-10.16Z" />
                   )}
                 </svg>
-              </button>
-              <button type="button" className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+              </button> */}
+              {/* <button type="button" className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
                 EN
-              </button>
+              </button> */}
               <button
                 type="button"
                 title="Open read-only preview"
