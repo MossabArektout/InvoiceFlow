@@ -1744,7 +1744,7 @@ function InvoiceApp() {
 
       const pdfWidth = 210;
       const pdfHeight = 297;
-      const margin = 20;
+      const margin = 10;
       const usableWidth = pdfWidth - margin * 2;
       const imgHeight = (canvas.height * usableWidth) / canvas.width;
       const usableHeight = pdfHeight - margin * 2;
