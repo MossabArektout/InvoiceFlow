@@ -413,7 +413,11 @@ export default function InvoiceEditorPanel({
                 <div className="grid items-center gap-3 sm:grid-cols-[130px_1fr]">
                   <p className="text-sm font-medium text-slate-500">Invoice Number</p>
                   <div className="relative">
-                    <input value={data.invoiceNumber} readOnly className="h-10 rounded-lg bg-slate-50 pr-10" />
+                    <input
+                      value={data.invoiceNumber}
+                      onChange={(e) => setData((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                      className="h-10 rounded-lg pr-10"
+                    />
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path d="M8 2a2 2 0 0 0-2 2v1H5a2 2 0 0 0-2 2v2h2V7h10v10H5v-2H3v2a2 2 0 0 0 2 2h1v1a2 2 0 1 0 4 0v-1h2v1a2 2 0 1 0 4 0v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V4a2 2 0 1 0-4 0v1h-2V4a2 2 0 0 0-2-2Zm1 3V4a1 1 0 1 1 2 0v1H9Zm4 0V4a1 1 0 1 1 2 0v1h-2Z" />
@@ -428,7 +432,7 @@ export default function InvoiceEditorPanel({
                       type="date"
                       value={data.issueDate}
                       onChange={(e) => setData((prev) => ({ ...prev, issueDate: e.target.value }))}
-                      className="h-10 rounded-lg pr-10"
+                      className="h-10 rounded-lg pr-3 [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
@@ -439,7 +443,7 @@ export default function InvoiceEditorPanel({
                       type="date"
                       value={data.dueDate}
                       onChange={(e) => setData((prev) => ({ ...prev, dueDate: e.target.value }))}
-                      className="h-10 rounded-lg pr-10"
+                      className="h-10 rounded-lg pr-3 [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>

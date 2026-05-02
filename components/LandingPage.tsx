@@ -150,10 +150,28 @@ function LandingPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const onScroll = () => setHasScrolled(window.scrollY > 10);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const updateScrollState = () => {
+      const y = Math.max(window.scrollY, document.documentElement.scrollTop, document.body.scrollTop || 0);
+      setHasScrolled(y > 10);
+    };
+
+    const rafId = window.requestAnimationFrame(updateScrollState);
+    updateScrollState();
+
+    window.addEventListener('scroll', updateScrollState, { passive: true });
+    document.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState, { passive: true });
+    window.addEventListener('hashchange', updateScrollState, { passive: true });
+    window.addEventListener('pageshow', updateScrollState);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', updateScrollState);
+      document.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+      window.removeEventListener('hashchange', updateScrollState);
+      window.removeEventListener('pageshow', updateScrollState);
+    };
   }, []);
 
   return (
@@ -334,7 +352,7 @@ function LandingPage() {
               name="Free"
               price="$0/mo"
               description="Try it out for free, no commitments."
-              highlights={['5 invoice exports / month', 'Guided AI suggestions', 'Basic templates', 'Email support']}
+              highlights={['15 invoice exports / month', 'Guided AI suggestions', 'Basic templates', 'Email support']}
               ctaLabel="Try It"
               ctaNote="*we don't ask for your credit card"
               onClick={() => router.push(isSignedIn ? '/app' : '/sign-up')}

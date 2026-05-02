@@ -319,46 +319,183 @@ const createInitialData = (invoiceNumber = 'INV-001'): InvoiceData => ({
   items: [createEmptyItem()]
 });
 
-const createTemplatePreviewData = (): InvoiceData => ({
-  from: {
-    name: 'InvoiceFlow Studio',
-    email: 'hello@invoiceflow.app',
-    address: '120 Market Street\nSan Francisco, CA 94103'
-  },
-  to: {
-    name: 'Acme Ventures LLC',
-    email: 'billing@acmeventures.com',
-    address: '88 Madison Ave\nNew York, NY 10016'
-  },
-  invoiceNumber: 'INV-1042',
-  issueDate: todayISO(),
-  dueDate: addDaysISO(14),
-  status: 'sent',
-  notes: 'Thank you for your business. Please include invoice number with payment.',
-  paymentTerms: 'Bank transfer within 14 days',
-  discountType: 'percentage',
-  discountValue: '5',
-  shippingFee: '25',
-  taxPercent: '8.5',
-  signatureMode: 'upload',
-  signatureDataUrl: '',
-  items: [
-    {
-      id: crypto.randomUUID(),
-      description: 'Website design system and UI kit',
-      quantity: '1',
-      unitPrice: '2400',
-      discountPercent: '0'
-    },
-    {
-      id: crypto.randomUUID(),
-      description: 'Frontend implementation (20 hours)',
-      quantity: '20',
-      unitPrice: '95',
-      discountPercent: '0'
-    }
-  ]
+const createPreviewItem = (description: string, quantity: string, unitPrice: string, discountPercent = '0'): LineItem => ({
+  id: crypto.randomUUID(),
+  description,
+  quantity,
+  unitPrice,
+  discountPercent
 });
+
+const createTemplatePreviewData = (templateId: TemplateId): InvoiceData => {
+  const base: InvoiceData = {
+    from: {
+      name: 'Northline Creative Agency',
+      email: 'finance@northline.agency',
+      address: '120 Market Street\nSan Francisco, CA 94103'
+    },
+    to: {
+      name: 'Acme Ventures LLC',
+      email: 'billing@acmeventures.com',
+      address: '88 Madison Ave\nNew York, NY 10016'
+    },
+    invoiceNumber: 'INV-1042',
+    issueDate: todayISO(),
+    dueDate: addDaysISO(14),
+    status: 'sent',
+    notes: 'Thank you for your business. Please include invoice number with your payment reference.',
+    paymentTerms: 'Bank transfer within 14 days',
+    discountType: 'percentage',
+    discountValue: '0',
+    shippingFee: '0',
+    taxPercent: '8.5',
+    signatureMode: 'upload',
+    signatureDataUrl: '',
+    items: [createPreviewItem('Design system and UI kit', '1', '2400'), createPreviewItem('Frontend implementation', '20', '95')]
+  };
+
+  if (templateId === 'detailed-itemized') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-2238',
+      to: {
+        name: 'Vertex Logistics Inc.',
+        email: 'ap@vertexlogistics.com',
+        address: '29 Hudson Yards\nNew York, NY 10001'
+      },
+      notes: 'Project billed in weekly milestones with QA reporting included.',
+      paymentTerms: 'Net 30',
+      discountType: 'fixed',
+      discountValue: '0',
+      items: [
+        createPreviewItem('Product discovery workshop', '2', '850'),
+        createPreviewItem('UX wireframing and user flows', '16', '90'),
+        createPreviewItem('UI high-fidelity screens', '22', '95'),
+        createPreviewItem('Design QA and implementation support', '10', '85')
+      ]
+    };
+  }
+
+  if (templateId === 'compact-receipt') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-3881',
+      from: {
+        name: 'Studio Oak',
+        email: 'hello@studiooak.co',
+        address: '1410 Pine Street\nSeattle, WA 98101'
+      },
+      notes: 'Paid upon receipt preferred.',
+      paymentTerms: 'Due on receipt',
+      discountValue: '0',
+      taxPercent: '7.25',
+      items: [createPreviewItem('Logo refresh package', '1', '450'), createPreviewItem('Print-ready assets', '1', '180')]
+    };
+  }
+
+  if (templateId === 'creative-bold-branding') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-5127',
+      from: {
+        name: 'Nova Motion Studio',
+        email: 'accounts@novamotion.com',
+        address: '2208 W Sunset Blvd\nLos Angeles, CA 90026'
+      },
+      to: {
+        name: 'Pulse Beverage Co.',
+        email: 'payables@pulsebev.com',
+        address: '455 5th Ave\nBrooklyn, NY 11215'
+      },
+      notes: 'Campaign rollout package for Summer launch.',
+      paymentTerms: '50% deposit, balance due in 15 days',
+      shippingFee: '35',
+      taxPercent: '9',
+      items: [
+        createPreviewItem('Campaign concept and art direction', '1', '3200'),
+        createPreviewItem('Social media design pack (30 assets)', '1', '1800'),
+        createPreviewItem('Motion graphics deliverables', '12', '120')
+      ]
+    };
+  }
+
+  if (templateId === 'service-hours') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-6409',
+      from: {
+        name: 'Miller Consulting Group',
+        email: 'billing@millerconsulting.io',
+        address: '75 Congress St\nBoston, MA 02110'
+      },
+      to: {
+        name: 'Bright Legal Partners',
+        email: 'finance@brightlegal.com',
+        address: '150 N Riverside\nChicago, IL 60606'
+      },
+      notes: 'Monthly advisory retainer and support hours.',
+      paymentTerms: 'Net 15',
+      discountType: 'percentage',
+      discountValue: '0',
+      shippingFee: '0',
+      taxPercent: '0',
+      items: [
+        createPreviewItem('Business strategy advisory', '12', '140'),
+        createPreviewItem('Operations review meetings', '6', '120'),
+        createPreviewItem('Priority support', '8', '95')
+      ]
+    };
+  }
+
+  if (templateId === 'international-tax') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-7702',
+      from: {
+        name: 'Atlas Digital Ltd.',
+        email: 'accounts@atlasdigital.co.uk',
+        address: '11 Bishopsgate\nLondon EC2N 3AQ\nUnited Kingdom'
+      },
+      to: {
+        name: 'EuroTrade GmbH',
+        email: 'rechnung@eurotrade.de',
+        address: 'Kurfuerstendamm 101\n10711 Berlin\nGermany'
+      },
+      notes: 'Cross-border consulting services. VAT details included.',
+      paymentTerms: 'SEPA transfer within 21 days',
+      discountType: 'fixed',
+      discountValue: '0',
+      shippingFee: '0',
+      taxPercent: '20',
+      items: [
+        createPreviewItem('Market expansion strategy', '1', '2800'),
+        createPreviewItem('Localization and compliance review', '14', '95'),
+        createPreviewItem('Quarterly reporting package', '1', '640')
+      ]
+    };
+  }
+
+  if (templateId === 'classic-professional') {
+    return {
+      ...base,
+      invoiceNumber: 'INV-1874',
+      from: {
+        name: 'Bridgepoint Solutions',
+        email: 'invoices@bridgepoint.com',
+        address: '300 W Adams St\nChicago, IL 60606'
+      },
+      notes: 'Professional services billed for Q2 delivery.',
+      paymentTerms: 'Net 21',
+      items: [
+        createPreviewItem('Project planning and kickoff', '1', '900'),
+        createPreviewItem('Weekly implementation sprint', '18', '110'),
+        createPreviewItem('Documentation and handover', '6', '90')
+      ]
+    };
+  }
+
+  return base;
+};
 
 const TEMPLATES: { id: TemplateId; name: string }[] = [
   { id: 'minimal', name: 'Modern Minimal' },
@@ -939,13 +1076,15 @@ function InvoiceApp() {
 
   useEffect(() => {
     if (!isTemplatePreviewOnly) return;
-    setData(createTemplatePreviewData());
-    setIsDiscountVisible(true);
+    const template = searchParams.get('template');
+    const templateId = template && isTemplateId(template) ? template : 'minimal';
+    setData(createTemplatePreviewData(templateId));
+    setIsDiscountVisible(false);
     setIsAppLoading(false);
     setIsInvoicesLoading(false);
     setIsClientsLoading(false);
     setIsLogoLoading(false);
-  }, [isTemplatePreviewOnly, setData, setIsClientsLoading, setIsDiscountVisible, setIsInvoicesLoading]);
+  }, [isTemplatePreviewOnly, searchParams, setData, setIsClientsLoading, setIsDiscountVisible, setIsInvoicesLoading]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1116,6 +1255,8 @@ function InvoiceApp() {
 
   const clearForm = () => {
     resetFormForNewInvoice();
+    setLogoPreviewUrl(null);
+    setLogoUrl(null);
   };
 
   const closeCurrencyDropdown = () => {
@@ -1421,11 +1562,12 @@ function InvoiceApp() {
     });
   };
 
-  const downloadPdf = async () => {
+  const buildPdfDocument = async (): Promise<{ pdf: jsPDF; filename: string } | null> => {
     try {
-      if (!invoiceRef.current) return;
+      if (!invoiceRef.current) return null;
+      const exportRoot = (invoiceRef.current.firstElementChild as HTMLElement | null) ?? invoiceRef.current;
       const savedRecord = await saveInvoice({ source: 'manual' });
-      if (!savedRecord) return;
+      if (!savedRecord) return null;
 
       const exportCheck = await apiFetch<{
         allowed: boolean;
@@ -1443,10 +1585,10 @@ function InvoiceApp() {
 
       if (!exportCheck.allowed) {
         setIsExportLimitModalOpen(true);
-        return;
+        return null;
       }
 
-      const logoImages = Array.from(invoiceRef.current.querySelectorAll('img[data-invoice-logo="true"]')) as HTMLImageElement[];
+      const logoImages = Array.from(exportRoot.querySelectorAll('img[data-invoice-logo="true"]')) as HTMLImageElement[];
 
       await Promise.all(
         logoImages.map(
@@ -1472,13 +1614,16 @@ function InvoiceApp() {
         )
       );
 
-      const canvas = await html2canvas(invoiceRef.current, {
+      const canvas = await html2canvas(exportRoot, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true
       });
 
-      if (!hasPaidPlan) {
+      const currentExportCount = Number(exportCheck.exports_this_month ?? exportsThisMonth);
+      const shouldSkipWatermarkForFree = plan === 'free' && currentExportCount <= 15;
+
+      if (!hasPaidPlan && !shouldSkipWatermarkForFree) {
         const context = canvas.getContext('2d');
         if (context) {
           context.save();
@@ -1498,28 +1643,53 @@ function InvoiceApp() {
 
       const pdfWidth = 210;
       const pdfHeight = 297;
-      const margin = 10;
+      const margin = 20;
       const usableWidth = pdfWidth - margin * 2;
       const imgHeight = (canvas.height * usableWidth) / canvas.width;
       const usableHeight = pdfHeight - margin * 2;
 
       let heightLeft = imgHeight;
       let positionY = margin;
+      const pageBreakTolerance = 4;
 
       pdf.addImage(imgData, 'PNG', margin, positionY, usableWidth, imgHeight);
       heightLeft -= usableHeight;
 
-      while (heightLeft > 0) {
+      while (heightLeft > pageBreakTolerance) {
         positionY = heightLeft - imgHeight + margin;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', margin, positionY, usableWidth, imgHeight);
         heightLeft -= usableHeight;
       }
-
-      pdf.save(`${savedRecord?.invoiceNumber || data.invoiceNumber || 'invoice'}.pdf`);
+      return {
+        pdf,
+        filename: `${savedRecord?.invoiceNumber || data.invoiceNumber || 'invoice'}.pdf`
+      };
     } catch {
       showToast('PDF export failed. Please try again.');
+      return null;
     }
+  };
+
+  const downloadPdf = async () => {
+    const result = await buildPdfDocument();
+    if (!result) return;
+    result.pdf.save(result.filename);
+  };
+
+  const printInvoice = async () => {
+    const result = await buildPdfDocument();
+    if (!result) return;
+
+    const blob = result.pdf.output('blob');
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!printWindow) {
+      URL.revokeObjectURL(url);
+      showToast('Please allow popups to print the invoice.');
+      return;
+    }
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   if (isAppLoading) {
@@ -1537,7 +1707,7 @@ function InvoiceApp() {
     return (
       <div className="min-h-screen bg-slate-100 p-3 sm:p-5">
         <div className="mx-auto w-full max-w-[900px] overflow-auto border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
-          <div ref={invoiceRef} className="mx-auto w-full max-w-[794px] break-words [overflow-wrap:anywhere] bg-white">
+          <div ref={invoiceRef} className="mx-auto w-[794px] max-w-[794px] break-normal bg-white">
             {renderSelectedTemplate()}
           </div>
         </div>
@@ -1591,14 +1761,6 @@ function InvoiceApp() {
               {/* <button type="button" className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
                 EN
               </button> */}
-              <button
-                type="button"
-                title="Open read-only preview"
-                onClick={() => setIsPreviewModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-              >
-                Preview
-              </button>
               <button
                 type="button"
                 title="Save Invoice (⌘/Ctrl+S)"
@@ -1728,7 +1890,9 @@ function InvoiceApp() {
           setIsPreviewFitWidth={setIsPreviewFitWidth}
           invoiceRef={invoiceRef}
           renderSelectedTemplate={renderSelectedTemplate}
+          onOpenPreview={() => setIsPreviewModalOpen(true)}
           onDownloadPdf={() => void downloadPdf()}
+          onPrintInvoice={() => void printInvoice()}
           onShowShortcuts={() => setShowShortcutsModal(true)}
         />
         </div>
@@ -1749,7 +1913,7 @@ function InvoiceApp() {
               void downloadPdf();
             }}
           >
-            <div className="mx-auto w-full max-w-[794px] break-words [overflow-wrap:anywhere] bg-white">
+            <div className="mx-auto w-[794px] max-w-[794px] break-normal bg-white">
               {renderSelectedTemplate()}
             </div>
           </PreviewModal>
@@ -1956,7 +2120,7 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
           <InvoiceLogo logoUrl={logoUrl} className="max-h-[54px] max-w-[82px]" />
           <div className="min-w-0">
             <p className="text-[28px] font-bold tracking-tight text-black">{data.from.name || 'Your Company'}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-400">{data.paymentTerms.trim() || 'Payment details'}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{data.from.email || 'your@email.com'}</p>
           </div>
         </div>
         <div className="shrink-0 pt-0.5 text-right">
@@ -2026,10 +2190,12 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
             <span className="text-slate-500">Subtotal</span>
             <span className="font-semibold text-slate-800">{formatCurrency(computed.subtotal, currency)}</span>
           </p>
-          <p className="flex items-center justify-between border-b border-slate-100 py-3">
-            <span className="text-slate-500">{data.discountType === 'percentage' ? `Discount (${Number(data.discountValue) || 0}%)` : 'Discount'}</span>
-            <span className="font-semibold text-slate-800">- {formatCurrency(computed.discountAmount, currency)}</span>
-          </p>
+          {computed.discountAmount > 0 ? (
+            <p className="flex items-center justify-between border-b border-slate-100 py-3">
+              <span className="text-slate-500">{data.discountType === 'percentage' ? `Discount (${Number(data.discountValue) || 0}%)` : 'Discount'}</span>
+              <span className="font-semibold text-slate-800">- {formatCurrency(computed.discountAmount, currency)}</span>
+            </p>
+          ) : null}
           <p className="flex items-center justify-between border-b border-slate-100 py-3">
             <span className="text-slate-500">Tax ({Number(data.taxPercent) || 0}%)</span>
             <span className="font-semibold text-slate-800">{formatCurrency(computed.taxAmount, currency)}</span>
@@ -2126,7 +2292,9 @@ const ClassicProfessionalTemplate = ({ data, computed, currency, logoUrl }: Invo
 
     <div className="mt-8 ml-auto w-full max-w-sm space-y-2 text-sm">
       <p className="flex items-center justify-between border-b border-slate-200 pb-2"><span>Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-      <p className="flex items-center justify-between border-b border-slate-200 pb-2"><span>{data.discountType === 'percentage' ? `Discount (${Number(data.discountValue) || 0}%)` : 'Discount'}</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      {computed.discountAmount > 0 ? (
+        <p className="flex items-center justify-between border-b border-slate-200 pb-2"><span>{data.discountType === 'percentage' ? `Discount (${Number(data.discountValue) || 0}%)` : 'Discount'}</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      ) : null}
       <p className="flex items-center justify-between border-b border-slate-200 pb-2"><span>Tax ({Number(data.taxPercent) || 0}%)</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
       <p className="flex items-center justify-between border-b border-slate-200 pb-2"><span>Shipping</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
       <p className="flex items-center justify-between rounded bg-[#dbeafe] px-3 py-2 font-bold text-[#1e3a8a]"><span>Total Due</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>
@@ -2206,7 +2374,9 @@ const DetailedItemizedTemplate = ({ data, computed, currency, logoUrl }: Invoice
 
     <div className="mt-6 ml-auto w-full max-w-[340px] space-y-1.5 rounded border border-[#86efac] bg-[#f0fdf4] p-3 text-xs">
       <p className="flex items-center justify-between"><span>Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-      <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      {computed.discountAmount > 0 ? (
+        <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      ) : null}
       <p className="flex items-center justify-between"><span>Tax</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
       <p className="flex items-center justify-between"><span>Shipping</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
       <p className="flex items-center justify-between border-t border-[#86efac] pt-2 text-sm font-bold text-[#14532d]"><span>Grand Total</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>
@@ -2255,7 +2425,9 @@ const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTe
 
     <div className="mt-4 space-y-1 border-y border-dashed border-slate-300 py-2">
       <p className="flex items-center justify-between"><span>Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-      <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      {computed.discountAmount > 0 ? (
+        <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      ) : null}
       <p className="flex items-center justify-between"><span>Tax</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
       <p className="flex items-center justify-between"><span>Shipping</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
       <p className="flex items-center justify-between text-base font-bold"><span>TOTAL</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>
@@ -2295,7 +2467,7 @@ const CreativeBoldBrandingTemplate = ({ data, computed, currency, logoUrl }: Inv
         <div className="rounded-xl border border-pink-400/30 bg-pink-300/10 p-4">
           <p className="text-xs uppercase tracking-wide text-pink-200">Contact</p>
           <p className="mt-2 text-base font-semibold text-white">{data.from.email || '-'}</p>
-          <p className="text-slate-200">{data.paymentTerms || 'Payment on receipt'}</p>
+          {data.paymentTerms.trim() ? <p className="text-slate-200">{data.paymentTerms}</p> : null}
         </div>
       </div>
 
@@ -2324,7 +2496,9 @@ const CreativeBoldBrandingTemplate = ({ data, computed, currency, logoUrl }: Inv
 
       <div className="mt-6 ml-auto w-full max-w-xs rounded-xl bg-white/10 p-4">
         <p className="flex items-center justify-between text-sm"><span>Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-        <p className="mt-1 flex items-center justify-between text-sm"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+        {computed.discountAmount > 0 ? (
+          <p className="mt-1 flex items-center justify-between text-sm"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+        ) : null}
         <p className="mt-1 flex items-center justify-between text-sm"><span>Tax</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
         <p className="mt-1 flex items-center justify-between text-sm"><span>Shipping</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
         <p className="mt-3 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#06b6d4] to-[#f43f5e] px-3 py-2 text-sm font-extrabold text-white"><span>Total</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>
@@ -2391,7 +2565,9 @@ const ServiceHoursTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemp
 
     <div className="mt-6 ml-auto w-full max-w-sm space-y-2 rounded-lg border border-[#bfdbfe] p-4">
       <p className="flex items-center justify-between"><span>Service Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-      <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      {computed.discountAmount > 0 ? (
+        <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      ) : null}
       <p className="flex items-center justify-between"><span>Tax ({Number(data.taxPercent) || 0}%)</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
       <p className="flex items-center justify-between"><span>Expenses / Shipping</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
       <p className="flex items-center justify-between rounded bg-[#2563eb] px-3 py-2 font-bold text-white"><span>Total Fee</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>
@@ -2459,7 +2635,9 @@ const InternationalTaxTemplate = ({ data, computed, currency, logoUrl }: Invoice
 
     <div className="mt-6 ml-auto w-full max-w-[360px] space-y-1.5 rounded border border-[#d8b4fe] bg-[#faf5ff] p-3 text-xs">
       <p className="flex items-center justify-between"><span>Subtotal ({currency})</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
-      <p className="flex items-center justify-between"><span>Discount ({currency})</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      {computed.discountAmount > 0 ? (
+        <p className="flex items-center justify-between"><span>Discount ({currency})</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
+      ) : null}
       <p className="flex items-center justify-between"><span>VAT ({Number(data.taxPercent) || 0}%)</span><span>{formatCurrency(computed.taxAmount, currency)}</span></p>
       <p className="flex items-center justify-between"><span>Shipping ({currency})</span><span>{formatCurrency(computed.shippingAmount, currency)}</span></p>
       <p className="flex items-center justify-between border-t border-[#d8b4fe] pt-2 text-sm font-bold text-[#5b21b6]"><span>Total Payable ({currency})</span><span>{formatCurrency(computed.grandTotal, currency)}</span></p>

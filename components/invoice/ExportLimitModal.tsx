@@ -27,7 +27,7 @@ export default function ExportLimitModal({
             <h3 className="text-xl font-bold text-slate-900">Monthly limit reached 📊</h3>
             <p className="mt-2 text-sm text-slate-600">
               {plan === 'free'
-                ? `You've used all 5 of your free PDF exports this month. Resets on ${formatShortDate(exportsResetDate)}.`
+                ? `You've used all 15 of your free PDF exports this month. Resets on ${formatShortDate(exportsResetDate)}.`
                 : plan === 'creator'
                   ? `You've used all 40 of your Creator exports this month. Resets on ${formatShortDate(exportsResetDate)}.`
                   : `You've used all 150 of your Pro exports this month. Resets on ${formatShortDate(exportsResetDate)}.`}

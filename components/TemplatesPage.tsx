@@ -295,6 +295,7 @@ export default function TemplatesPage() {
               <div>
                 <p className={`text-lg font-bold ${previewTemplate.accentClass}`}>{previewTemplate.name}</p>
                 <p className="mt-1 text-sm text-slate-500">{previewTemplate.description}</p>
+                <p className="mt-1 text-xs font-medium text-slate-400">{previewTemplate.useCase}</p>
               </div>
               <button
                 type="button"
@@ -312,6 +313,12 @@ export default function TemplatesPage() {
                 title={`${previewTemplate.name} preview`}
                 className="h-[70vh] w-full bg-white"
               />
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="border border-slate-200 bg-white px-2 py-1">Real layout</span>
+              <span className="border border-slate-200 bg-white px-2 py-1">Client-ready structure</span>
+              <span className="border border-slate-200 bg-white px-2 py-1">One-click customize</span>
             </div>
 
             <div className="mt-5 flex flex-wrap justify-end gap-2">

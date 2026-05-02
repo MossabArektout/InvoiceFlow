@@ -1,7 +1,7 @@
 export type UserPlan = 'free' | 'creator' | 'pro';
 
 export const PLAN_EXPORT_LIMITS: Record<UserPlan, number> = {
-  free: 5,
+  free: 15,
   creator: 40,
   pro: 150
 };
