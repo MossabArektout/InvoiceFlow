@@ -30,9 +30,14 @@ type InvoiceData = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: 'percentage' | 'fixed';
   discountValue: string;
   shippingFee: string;
@@ -226,6 +231,13 @@ export default function InvoiceEditorPanel({
                           className={errorFields.includes('from.email') ? 'field-error-shake border-red-300' : ''}
                         />
                       </Field>
+                      <Field label="Your Tax ID">
+                        <input
+                          value={data.fromTaxId}
+                          onChange={(e) => setData((prev) => ({ ...prev, fromTaxId: e.target.value }))}
+                          placeholder="EIN / VAT / GST Number"
+                        />
+                      </Field>
                       <Field label="Your Address" required>
                         <textarea
                           rows={3}
@@ -372,6 +384,13 @@ export default function InvoiceEditorPanel({
                         className={errorFields.includes('to.email') ? 'field-error-shake border-red-300' : ''}
                       />
                     </Field>
+                    <Field label="Client Tax ID">
+                      <input
+                        value={data.toTaxId}
+                        onChange={(e) => setData((prev) => ({ ...prev, toTaxId: e.target.value }))}
+                        placeholder="VAT / GST / Tax Number"
+                      />
+                    </Field>
                     <Field label="Client Address" required>
                       <textarea
                         rows={3}
@@ -446,6 +465,26 @@ export default function InvoiceEditorPanel({
                       className="h-10 rounded-lg pr-3 [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
+                </div>
+                <div className="grid items-center gap-3 sm:grid-cols-[130px_1fr]">
+                  <p className="text-sm font-medium text-slate-500">Service Date</p>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={data.serviceDate}
+                      onChange={(e) => setData((prev) => ({ ...prev, serviceDate: e.target.value }))}
+                      className="h-10 rounded-lg pr-3 [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div className="grid items-center gap-3 sm:grid-cols-[130px_1fr]">
+                  <p className="text-sm font-medium text-slate-500">PO / Ref No.</p>
+                  <input
+                    value={data.poNumber}
+                    onChange={(e) => setData((prev) => ({ ...prev, poNumber: e.target.value }))}
+                    placeholder="PO-2026-001"
+                    className="h-10 rounded-lg"
+                  />
                 </div>
                 <div className="grid items-center gap-3 sm:grid-cols-[130px_1fr]">
                   <p className="text-sm font-medium text-slate-500">Currency</p>
@@ -550,6 +589,16 @@ export default function InvoiceEditorPanel({
           <div className="order-6">
             <FormBlock title="Additional Details">
               <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-[12px] font-medium text-slate-500">Payment Instructions</label>
+                  <textarea
+                    rows={3}
+                    value={data.paymentInstructions}
+                    onChange={(e) => setData((prev) => ({ ...prev, paymentInstructions: e.target.value.slice(0, 500) }))}
+                    placeholder="Bank: XYZ Bank | IBAN: ... | SWIFT: ... | PayPal: billing@company.com"
+                    className="resize-y"
+                  />
+                </div>
                 <div>
                   <label className="mb-1 block text-[12px] font-medium text-slate-500">Notes</label>
                   <textarea

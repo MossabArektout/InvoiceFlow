@@ -24,9 +24,14 @@ type InvoiceData = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: DiscountType;
   discountValue: string;
   shippingFee: string;

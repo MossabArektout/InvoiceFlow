@@ -43,9 +43,14 @@ type InvoiceData = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: DiscountType;
   discountValue: string;
   shippingFee: string;
@@ -85,9 +90,14 @@ type SavedInvoice = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: DiscountType;
   discountValue: string;
   shippingFee: string;
@@ -219,6 +229,14 @@ const formatShortDate = (value: string) => {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+const formatPaymentInstructions = (value: string) =>
+  value
+    .split(/\r?\n/)
+    .flatMap((line) => line.split(/\s*(?:\||•|;)\s*/g))
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
+
 const CURRENCIES: CurrencyOption[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸', locale: 'en-US', decimals: 2 },
   { code: 'EUR', name: 'Euro', symbol: '€', flag: '🇪🇺', locale: 'de-DE', decimals: 2 },
@@ -307,9 +325,14 @@ const createInitialData = (invoiceNumber = 'INV-001'): InvoiceData => ({
   invoiceNumber,
   issueDate: todayISO(),
   dueDate: addDaysISO(14),
+  serviceDate: todayISO(),
+  poNumber: '',
+  fromTaxId: '',
+  toTaxId: '',
   status: 'draft',
   notes: '',
   paymentTerms: '',
+  paymentInstructions: '',
   discountType: 'percentage',
   discountValue: '0',
   shippingFee: '0',
@@ -342,9 +365,14 @@ const createTemplatePreviewData = (templateId: TemplateId): InvoiceData => {
     invoiceNumber: 'INV-1042',
     issueDate: todayISO(),
     dueDate: addDaysISO(14),
+    serviceDate: todayISO(),
+    poNumber: 'PO-1042',
+    fromTaxId: 'EIN 84-6679012',
+    toTaxId: 'EIN 12-9988776',
     status: 'sent',
     notes: 'Thank you for your business. Please include invoice number with your payment reference.',
     paymentTerms: 'Bank transfer within 14 days',
+    paymentInstructions: 'ACH: 021000021 • Account: ****1842 • Swift: BOFAUS3N',
     discountType: 'percentage',
     discountValue: '0',
     shippingFee: '0',
@@ -610,6 +638,14 @@ const computeDiscountAmount = (subtotal: number, discountType: DiscountType, raw
 
 const INVOICE_LINE_META_KEY = '__invoiceflow_meta';
 
+type InvoiceComplianceMeta = {
+  service_date: string;
+  po_number: string;
+  from_tax_id: string;
+  to_tax_id: string;
+  payment_instructions: string;
+};
+
 const getLineItemsMeta = (lineItems: unknown[]): Record<string, unknown> => {
   const metaEntry = lineItems.find((item) => {
     const obj = (item ?? {}) as Record<string, unknown>;
@@ -627,13 +663,30 @@ const getShippingFeeFromLineItems = (lineItems: unknown[]): string => {
   return String(shippingFee);
 };
 
-const toStoredLineItems = (items: LineItem[], shippingFee: string) => {
+const getComplianceMetaFromLineItems = (lineItems: unknown[]): InvoiceComplianceMeta => {
+  const meta = getLineItemsMeta(lineItems);
+
+  return {
+    service_date: typeof meta.service_date === 'string' ? meta.service_date : '',
+    po_number: typeof meta.po_number === 'string' ? meta.po_number : '',
+    from_tax_id: typeof meta.from_tax_id === 'string' ? meta.from_tax_id : '',
+    to_tax_id: typeof meta.to_tax_id === 'string' ? meta.to_tax_id : '',
+    payment_instructions: typeof meta.payment_instructions === 'string' ? meta.payment_instructions : ''
+  };
+};
+
+const toStoredLineItems = (items: LineItem[], shippingFee: string, complianceMeta: InvoiceComplianceMeta) => {
   const normalizedShippingFee = Math.max(Number(shippingFee) || 0, 0);
   return [
     ...items,
     {
       [INVOICE_LINE_META_KEY]: {
-        shipping_fee: normalizedShippingFee
+        shipping_fee: normalizedShippingFee,
+        service_date: complianceMeta.service_date,
+        po_number: complianceMeta.po_number,
+        from_tax_id: complianceMeta.from_tax_id,
+        to_tax_id: complianceMeta.to_tax_id,
+        payment_instructions: complianceMeta.payment_instructions
       }
     }
   ];
@@ -690,47 +743,56 @@ const getTemplateFromQuery = (query: string): TemplateId | null => {
   return value && isTemplateId(value) ? value : null;
 };
 
-const mapApiInvoice = (invoice: ApiInvoice): SavedInvoice => ({
-  id: invoice.id,
-  from: {
-    name: invoice.from_name ?? '',
-    email: invoice.from_email ?? '',
-    address: invoice.from_address ?? ''
-  },
-  to: {
-    name: invoice.to_name ?? '',
-    email: invoice.to_email ?? '',
-    address: invoice.to_address ?? ''
-  },
-  invoiceNumber: invoice.invoice_number,
-  issueDate: invoice.issue_date ?? todayISO(),
-  dueDate: invoice.due_date ?? addDaysISO(14),
-  status: normalizeStatus(invoice.status),
-  notes: invoice.notes ?? '',
-  paymentTerms: invoice.payment_terms ?? '',
-  discountType: normalizeDiscountType(invoice.discount_type),
-  discountValue: String(Number(invoice.discount_value ?? 0)),
-  shippingFee: getShippingFeeFromLineItems(invoice.line_items ?? []),
-  taxPercent: toTaxPercent(
-    Math.max(
-      0,
-      Number(invoice.subtotal ?? 0) -
-        computeDiscountAmount(
-          Number(invoice.subtotal ?? 0),
-          normalizeDiscountType(invoice.discount_type),
-          Number(invoice.discount_value ?? 0)
-        )
+const mapApiInvoice = (invoice: ApiInvoice): SavedInvoice => {
+  const complianceMeta = getComplianceMetaFromLineItems(invoice.line_items ?? []);
+
+  return {
+    id: invoice.id,
+    from: {
+      name: invoice.from_name ?? '',
+      email: invoice.from_email ?? '',
+      address: invoice.from_address ?? ''
+    },
+    to: {
+      name: invoice.to_name ?? '',
+      email: invoice.to_email ?? '',
+      address: invoice.to_address ?? ''
+    },
+    invoiceNumber: invoice.invoice_number,
+    issueDate: invoice.issue_date ?? todayISO(),
+    dueDate: invoice.due_date ?? addDaysISO(14),
+    serviceDate: complianceMeta.service_date || invoice.issue_date || todayISO(),
+    poNumber: complianceMeta.po_number,
+    fromTaxId: complianceMeta.from_tax_id,
+    toTaxId: complianceMeta.to_tax_id,
+    status: normalizeStatus(invoice.status),
+    notes: invoice.notes ?? '',
+    paymentTerms: invoice.payment_terms ?? '',
+    paymentInstructions: complianceMeta.payment_instructions,
+    discountType: normalizeDiscountType(invoice.discount_type),
+    discountValue: String(Number(invoice.discount_value ?? 0)),
+    shippingFee: getShippingFeeFromLineItems(invoice.line_items ?? []),
+    taxPercent: toTaxPercent(
+      Math.max(
+        0,
+        Number(invoice.subtotal ?? 0) -
+          computeDiscountAmount(
+            Number(invoice.subtotal ?? 0),
+            normalizeDiscountType(invoice.discount_type),
+            Number(invoice.discount_value ?? 0)
+          )
+      ),
+      Number(invoice.tax ?? 0)
     ),
-    Number(invoice.tax ?? 0)
-  ),
-  signatureMode: invoice.signature_mode === 'draw' ? 'draw' : 'upload',
-  signatureDataUrl: invoice.signature_data_url ?? '',
-  items: sanitizeLineItems(invoice.line_items ?? []),
-  template: invoice.template && isTemplateId(invoice.template) ? invoice.template : FREE_TEMPLATE,
-  currency: (invoice.currency as CurrencyCode) ?? 'USD',
-  grandTotal: Number(invoice.total ?? 0),
-  savedAt: invoice.updated_at ?? invoice.created_at
-});
+    signatureMode: invoice.signature_mode === 'draw' ? 'draw' : 'upload',
+    signatureDataUrl: invoice.signature_data_url ?? '',
+    items: sanitizeLineItems(invoice.line_items ?? []),
+    template: invoice.template && isTemplateId(invoice.template) ? invoice.template : FREE_TEMPLATE,
+    currency: (invoice.currency as CurrencyCode) ?? 'USD',
+    grandTotal: Number(invoice.total ?? 0),
+    savedAt: invoice.updated_at ?? invoice.created_at
+  };
+};
 
 const mapApiClient = (client: ApiClient): Client => ({
   id: client.id,
@@ -767,7 +829,13 @@ const toInvoicePayload = (
     discount_value: normalizedDiscountValue,
     signature_mode: data.signatureDataUrl ? data.signatureMode : null,
     signature_data_url: data.signatureDataUrl || null,
-    line_items: toStoredLineItems(data.items, data.shippingFee),
+    line_items: toStoredLineItems(data.items, data.shippingFee, {
+      service_date: data.serviceDate || '',
+      po_number: data.poNumber.trim(),
+      from_tax_id: data.fromTaxId.trim(),
+      to_tax_id: data.toTaxId.trim(),
+      payment_instructions: data.paymentInstructions.trim()
+    }),
     subtotal: computed.subtotal,
     tax: computed.taxAmount,
     total: computed.grandTotal,
@@ -1563,9 +1631,10 @@ function InvoiceApp() {
   };
 
   const buildPdfDocument = async (): Promise<{ pdf: jsPDF; filename: string } | null> => {
+    let cleanupExportNode: (() => void) | null = null;
     try {
       if (!invoiceRef.current) return null;
-      const exportRoot = (invoiceRef.current.firstElementChild as HTMLElement | null) ?? invoiceRef.current;
+      const sourceRoot = (invoiceRef.current.firstElementChild as HTMLElement | null) ?? invoiceRef.current;
       const savedRecord = await saveInvoice({ source: 'manual' });
       if (!savedRecord) return null;
 
@@ -1587,6 +1656,29 @@ function InvoiceApp() {
         setIsExportLimitModalOpen(true);
         return null;
       }
+
+      const exportContainer = document.createElement('div');
+      exportContainer.setAttribute('aria-hidden', 'true');
+      exportContainer.style.position = 'fixed';
+      exportContainer.style.left = '-100000px';
+      exportContainer.style.top = '0';
+      exportContainer.style.width = '794px';
+      exportContainer.style.background = '#ffffff';
+      exportContainer.style.pointerEvents = 'none';
+      exportContainer.style.zIndex = '-1';
+
+      const exportRoot = sourceRoot.cloneNode(true) as HTMLElement;
+      exportRoot.style.width = '794px';
+      exportRoot.style.maxWidth = '794px';
+      exportRoot.style.margin = '0';
+      exportRoot.style.background = '#ffffff';
+      exportRoot.style.boxSizing = 'border-box';
+
+      exportContainer.appendChild(exportRoot);
+      document.body.appendChild(exportContainer);
+      cleanupExportNode = () => {
+        exportContainer.remove();
+      };
 
       const logoImages = Array.from(exportRoot.querySelectorAll('img[data-invoice-logo="true"]')) as HTMLImageElement[];
 
@@ -1614,10 +1706,19 @@ function InvoiceApp() {
         )
       );
 
+      if (typeof document !== 'undefined' && 'fonts' in document) {
+        await (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready;
+      }
+
       const canvas = await html2canvas(exportRoot, {
         scale: 2,
         backgroundColor: '#ffffff',
-        useCORS: true
+        useCORS: true,
+        width: 794,
+        windowWidth: 794,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false
       });
 
       const currentExportCount = Number(exportCheck.exports_this_month ?? exportsThisMonth);
@@ -1638,7 +1739,7 @@ function InvoiceApp() {
         }
       }
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.86);
       const pdf = new jsPDF('p', 'mm', 'a4');
 
       const pdfWidth = 210;
@@ -1647,18 +1748,31 @@ function InvoiceApp() {
       const usableWidth = pdfWidth - margin * 2;
       const imgHeight = (canvas.height * usableWidth) / canvas.width;
       const usableHeight = pdfHeight - margin * 2;
+      const nearSinglePageThreshold = usableHeight * 1.18;
+      const shouldForceSinglePage = imgHeight > usableHeight && imgHeight <= nearSinglePageThreshold;
+
+      if (shouldForceSinglePage) {
+        const fittedHeight = usableHeight;
+        const fittedWidth = (canvas.width * fittedHeight) / canvas.height;
+        const centeredX = margin + (usableWidth - fittedWidth) / 2;
+        pdf.addImage(imgData, 'JPEG', centeredX, margin, fittedWidth, fittedHeight, undefined, 'FAST');
+        return {
+          pdf,
+          filename: `${savedRecord?.invoiceNumber || data.invoiceNumber || 'invoice'}.pdf`
+        };
+      }
 
       let heightLeft = imgHeight;
       let positionY = margin;
       const pageBreakTolerance = 4;
 
-      pdf.addImage(imgData, 'PNG', margin, positionY, usableWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', margin, positionY, usableWidth, imgHeight, undefined, 'FAST');
       heightLeft -= usableHeight;
 
       while (heightLeft > pageBreakTolerance) {
         positionY = heightLeft - imgHeight + margin;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', margin, positionY, usableWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', margin, positionY, usableWidth, imgHeight, undefined, 'FAST');
         heightLeft -= usableHeight;
       }
       return {
@@ -1668,6 +1782,8 @@ function InvoiceApp() {
     } catch {
       showToast('PDF export failed. Please try again.');
       return null;
+    } finally {
+      cleanupExportNode?.();
     }
   };
 
@@ -2076,18 +2192,26 @@ const InvoiceAdditionalDetails = ({
   notesBodyClassName = ''
 }: InvoiceAdditionalDetailsProps) => {
   const hasTerms = Boolean(data.paymentTerms.trim());
+  const paymentInstructionsText = formatPaymentInstructions(data.paymentInstructions);
+  const hasPaymentInstructions = Boolean(paymentInstructionsText);
   const hasNotes = Boolean(data.notes.trim());
   const hasSignature = Boolean(data.signatureDataUrl);
 
-  if (!hasTerms && !hasNotes && !hasSignature) return null;
+  if (!hasTerms && !hasPaymentInstructions && !hasNotes && !hasSignature) return null;
 
   return (
     <div className={`mt-8 border-t pt-4 ${dividerClassName} ${containerClassName}`}>
-      <div className={`grid gap-4 ${hasTerms && hasNotes ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className="grid gap-4 md:grid-cols-2">
         {hasTerms ? (
           <div>
             <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${labelClassName}`}>Payment Terms</p>
             <p className={`mt-2 whitespace-pre-line text-sm ${bodyClassName}`}>{data.paymentTerms}</p>
+          </div>
+        ) : null}
+        {hasPaymentInstructions ? (
+          <div>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${labelClassName}`}>Payment Instructions</p>
+            <p className={`mt-2 whitespace-pre-line break-words text-sm ${bodyClassName}`}>{paymentInstructionsText}</p>
           </div>
         ) : null}
         {hasNotes ? (
@@ -2103,9 +2227,9 @@ const InvoiceAdditionalDetails = ({
           <img
             src={data.signatureDataUrl}
             alt="Signature"
-            className="mt-2 max-h-16 w-auto object-contain"
-            width={220}
-            height={90}
+            className="mt-2 max-h-20 w-auto object-contain contrast-125 saturate-125"
+            width={260}
+            height={110}
           />
         </div>
       ) : null}
@@ -2120,7 +2244,7 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
           <InvoiceLogo logoUrl={logoUrl} className="max-h-[54px] max-w-[82px]" />
           <div className="min-w-0">
             <p className="text-[28px] font-bold tracking-tight text-black">{data.from.name || 'Your Company'}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-400">{data.from.email || 'your@email.com'}</p>
+            <p className="mt-1 text-sm leading-5 text-slate-600">{data.from.email || 'your@email.com'}</p>
           </div>
         </div>
         <div className="shrink-0 pt-0.5 text-right">
@@ -2135,6 +2259,7 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
           <p className="mt-3.5 text-lg font-semibold text-black">{data.to.name || 'Client name'}</p>
           <p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-slate-700">{data.to.address || 'Client address'}</p>
           <p className="mt-2 text-[15px] text-slate-700">{data.to.email || 'client@email.com'}</p>
+          {data.toTaxId.trim() ? <p className="mt-2 text-[13px] text-slate-500">Tax ID: {data.toTaxId}</p> : null}
         </div>
         <div className="space-y-3">
           <p className="flex items-center justify-between gap-6">
@@ -2149,6 +2274,18 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
             <span className="text-[13px] font-medium text-slate-500">Due Date</span>
             <span className="text-[15px] font-semibold text-slate-800">{formatDate(data.dueDate)}</span>
           </p>
+          {data.serviceDate ? (
+            <p className="flex items-center justify-between gap-6">
+              <span className="text-[13px] font-medium text-slate-500">Service Date</span>
+              <span className="text-[15px] font-semibold text-slate-800">{formatDate(data.serviceDate)}</span>
+            </p>
+          ) : null}
+          {data.poNumber.trim() ? (
+            <p className="flex items-center justify-between gap-6">
+              <span className="text-[13px] font-medium text-slate-500">PO / Ref</span>
+              <span className="text-[15px] font-semibold text-slate-800">{data.poNumber}</span>
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -2179,10 +2316,21 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
 
       <div className="mt-16 grid grid-cols-[1fr_330px] gap-16">
         <div>
-          <p className="text-[24px] font-semibold text-black">Notes</p>
-          <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-slate-600">{data.notes.trim() || 'Add extra notes for your client here.'}</p>
+          {data.notes.trim() ? (
+            <>
+              <p className="text-[24px] font-semibold text-black">Notes</p>
+              <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-slate-600">{data.notes}</p>
+            </>
+          ) : null}
           {data.paymentTerms.trim() ? (
-            <p className="mt-4 text-sm text-slate-500">Payment terms: {data.paymentTerms}</p>
+            <p className="mt-4 whitespace-pre-line text-sm text-slate-700">Payment terms: {data.paymentTerms}</p>
+          ) : null}
+          {data.paymentInstructions.trim() ? (
+            <p className="mt-2 whitespace-pre-line break-words text-sm text-slate-700">
+              Payment instructions:
+              {'\n'}
+              {formatPaymentInstructions(data.paymentInstructions)}
+            </p>
           ) : null}
         </div>
         <div className="ml-auto w-full max-w-[330px] text-sm">
@@ -2215,18 +2363,19 @@ const MinimalTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateP
         <div className="flex items-end justify-between">
           <div>
             <p className="text-sm font-medium text-slate-700">{data.from.email || 'your@email.com'}</p>
-            <p className="mt-0.5 text-sm text-slate-500">{data.from.address || 'Your business address'}</p>
+            <p className="mt-0.5 text-sm text-slate-600">{data.from.address || 'Your business address'}</p>
+            {data.fromTaxId.trim() ? <p className="mt-0.5 text-sm text-slate-600">Tax ID: {data.fromTaxId}</p> : null}
           </div>
           {data.signatureDataUrl ? (
             <img
               src={data.signatureDataUrl}
               alt="Signature"
-              className="max-h-16 w-auto object-contain"
-              width={220}
-              height={90}
+              className="max-h-20 w-auto object-contain contrast-125 saturate-125"
+              width={260}
+              height={110}
             />
           ) : (
-            <p className="text-3xl italic leading-none text-slate-500">Signature</p>
+            <p className="text-4xl italic leading-none text-slate-600">Signature</p>
           )}
         </div>
       </div>
@@ -2387,7 +2536,7 @@ const DetailedItemizedTemplate = ({ data, computed, currency, logoUrl }: Invoice
 );
 
 const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemplateProps) => (
-  <div className="mx-auto min-h-[960px] w-full max-w-[430px] bg-white px-6 py-6 font-mono text-[11px] text-slate-700">
+  <div className="mx-auto min-h-[930px] w-full max-w-[430px] bg-white px-6 py-6 font-mono text-[12px] text-slate-800">
     <div className="text-center">
       <div className="mx-auto flex justify-center">
         <InvoiceLogo logoUrl={logoUrl} className="max-h-[44px] max-w-[70px]" />
@@ -2395,7 +2544,7 @@ const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTe
       <p className="mt-2 text-lg font-bold uppercase tracking-[0.08em]">{data.from.name || 'Your Company'}</p>
       <p>{data.from.email || 'your@email.com'}</p>
       <p className="whitespace-pre-line">{data.from.address || '-'}</p>
-      <p className="mt-2 border-y border-dashed border-slate-300 py-2 text-xs">Invoice {data.invoiceNumber}</p>
+      <p className="mt-2 border-y border-dashed border-slate-400 py-2 text-sm font-semibold">Invoice {data.invoiceNumber}</p>
     </div>
 
     <div className="mt-3 space-y-1">
@@ -2405,7 +2554,7 @@ const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTe
     </div>
 
     <table className="mt-4 w-full border-collapse text-left">
-      <thead className="border-y border-dashed border-slate-300 text-[10px] uppercase">
+      <thead className="border-y border-dashed border-slate-400 text-[11px] font-semibold uppercase text-slate-700">
         <tr>
           <th className="py-1">Item</th>
           <th className="py-1 text-right">Qty</th>
@@ -2414,7 +2563,7 @@ const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTe
       </thead>
       <tbody>
         {data.items.map((item, index) => (
-          <tr key={item.id} className="border-b border-dashed border-slate-200">
+          <tr key={item.id} className="border-b border-dashed border-slate-300">
             <td className="py-1.5">{item.description || '-'}</td>
             <td className="py-1.5 text-right">{item.quantity || '0'}</td>
             <td className="py-1.5 text-right">{formatCurrency(computed.lineTotals[index] ?? 0, currency)}</td>
@@ -2423,7 +2572,7 @@ const CompactReceiptTemplate = ({ data, computed, currency, logoUrl }: InvoiceTe
       </tbody>
     </table>
 
-    <div className="mt-4 space-y-1 border-y border-dashed border-slate-300 py-2">
+    <div className="mt-4 space-y-1 border-y border-dashed border-slate-400 py-2">
       <p className="flex items-center justify-between"><span>Subtotal</span><span>{formatCurrency(computed.subtotal, currency)}</span></p>
       {computed.discountAmount > 0 ? (
         <p className="flex items-center justify-between"><span>Discount</span><span>- {formatCurrency(computed.discountAmount, currency)}</span></p>
@@ -2516,7 +2665,7 @@ const ServiceHoursTemplate = ({ data, computed, currency, logoUrl }: InvoiceTemp
         <InvoiceLogo logoUrl={logoUrl} />
         <div>
           <p className="text-2xl font-bold text-slate-900">{data.from.name || 'Your Company'}</p>
-          <p className="text-sm text-slate-500">{data.from.email || 'your@email.com'}</p>
+          <p className="text-sm text-slate-700">{data.from.email || 'your@email.com'}</p>
         </div>
       </div>
       <div className="text-right">

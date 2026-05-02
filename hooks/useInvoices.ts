@@ -34,9 +34,14 @@ type InvoiceData = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: DiscountType;
   discountValue: string;
   shippingFee: string;
@@ -63,9 +68,14 @@ type SavedInvoice = {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  serviceDate: string;
+  poNumber: string;
+  fromTaxId: string;
+  toTaxId: string;
   status: InvoiceStatus;
   notes: string;
   paymentTerms: string;
+  paymentInstructions: string;
   discountType: DiscountType;
   discountValue: string;
   shippingFee: string;
@@ -291,8 +301,13 @@ export const useInvoices = <TTemplate extends string, TCurrency extends string>(
           ...prev,
           invoiceNumber: mapped.invoiceNumber,
           status: mapped.status,
+          serviceDate: mapped.serviceDate,
+          poNumber: mapped.poNumber,
+          fromTaxId: mapped.fromTaxId,
+          toTaxId: mapped.toTaxId,
           notes: mapped.notes,
           paymentTerms: mapped.paymentTerms,
+          paymentInstructions: mapped.paymentInstructions,
           discountType: mapped.discountType,
           discountValue: mapped.discountValue,
           shippingFee: mapped.shippingFee
@@ -350,9 +365,14 @@ export const useInvoices = <TTemplate extends string, TCurrency extends string>(
           invoiceNumber: invoice.invoiceNumber,
           issueDate: invoice.issueDate,
           dueDate: invoice.dueDate,
+          serviceDate: invoice.serviceDate,
+          poNumber: invoice.poNumber,
+          fromTaxId: invoice.fromTaxId,
+          toTaxId: invoice.toTaxId,
           status: invoice.status,
           notes: invoice.notes,
           paymentTerms: invoice.paymentTerms,
+          paymentInstructions: invoice.paymentInstructions,
           discountType: invoice.discountType,
           discountValue: invoice.discountValue,
           shippingFee: invoice.shippingFee,
