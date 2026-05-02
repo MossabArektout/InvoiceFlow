@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type UserPlan, normalizePlan } from '@/lib/plans';
 import InvoiceApp from './InvoiceApp';
 import WorkspaceNavbar from './WorkspaceNavbar';
@@ -38,8 +38,10 @@ export default function AppWorkspace() {
     return user.fullName || user.primaryEmailAddress?.emailAddress || user.username || 'User';
   }, [user]);
 
-  const isTemplatePreviewRuntime = () =>
-    isTemplatePreviewOnly || (typeof window !== 'undefined' && isTemplatePreviewQuery(window.location.search));
+  const isTemplatePreviewRuntime = useCallback(
+    () => isTemplatePreviewOnly || (typeof window !== 'undefined' && isTemplatePreviewQuery(window.location.search)),
+    [isTemplatePreviewOnly]
+  );
 
   useEffect(() => {
     if (isTemplatePreviewRuntime()) return;
@@ -61,7 +63,7 @@ export default function AppWorkspace() {
       }
     };
     void bootstrapUser();
-  }, [isTemplatePreviewOnly, router]);
+  }, [isTemplatePreviewRuntime, router]);
 
   useEffect(() => {
     if (isTemplatePreviewRuntime()) return;
@@ -76,7 +78,7 @@ export default function AppWorkspace() {
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', pathname);
     }
-  }, [isTemplatePreviewOnly, pathname, searchParams]);
+  }, [isTemplatePreviewRuntime, pathname, searchParams]);
 
   useEffect(() => {
     if (!toastMessage) return;

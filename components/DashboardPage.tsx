@@ -215,7 +215,7 @@ export default function DashboardPage() {
     if (stored && CURRENCY_LOCALE[stored]) {
       setSelectedCurrency(stored);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -264,7 +264,7 @@ export default function DashboardPage() {
       }
     };
     void loadStats();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const loadChart = async () => {

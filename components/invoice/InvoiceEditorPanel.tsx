@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import {
   type Dispatch,
   type MouseEvent as ReactMouseEvent,

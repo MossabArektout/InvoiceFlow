@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type AdminInvoice = {
   id: string;
@@ -71,7 +71,7 @@ export default function AdminInvoicesPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-  const loadInvoices = async () => {
+  const loadInvoices = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -94,11 +94,11 @@ export default function AdminInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, page, search, sort, status]);
 
   useEffect(() => {
     void loadInvoices();
-  }, [page, search, status, sort]);
+  }, [loadInvoices]);
 
   useEffect(() => {
     if (!toast) return;

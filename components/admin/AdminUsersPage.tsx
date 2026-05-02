@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type AdminUser = {
   id: string;
@@ -53,7 +53,7 @@ export default function AdminUsersPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -76,11 +76,11 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, page, plan, search, sort]);
 
   useEffect(() => {
     void loadUsers();
-  }, [page, search, plan, sort]);
+  }, [loadUsers]);
 
   useEffect(() => {
     if (!toast) return;

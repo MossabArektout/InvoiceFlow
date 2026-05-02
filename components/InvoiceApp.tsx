@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -964,22 +965,24 @@ function InvoiceApp() {
   const exportCounterTextColor =
     exportsRemaining === 0 ? 'text-red-600' : exportsUsedPercent >= 75 ? 'text-amber-600' : 'text-slate-500';
   const { isDarkMode, setIsDarkMode } = useDarkMode();
-  const isTemplatePreviewRuntime = () =>
-    isTemplatePreviewOnly || (typeof window !== 'undefined' && getPreviewModeFromQuery(window.location.search));
+  const isTemplatePreviewRuntime = useCallback(
+    () => isTemplatePreviewOnly || (typeof window !== 'undefined' && getPreviewModeFromQuery(window.location.search)),
+    [isTemplatePreviewOnly]
+  );
 
-  const isTemplateUnlocked = (templateId: TemplateId) => unlockedTemplateIds.includes(templateId);
+  const isTemplateUnlocked = useCallback((templateId: TemplateId) => unlockedTemplateIds.includes(templateId), [unlockedTemplateIds]);
   const logoDisplayUrl = logoPreviewUrl ?? logoUrl;
-  const openComingSoon = (nextPlan: 'creator' | 'pro' = 'creator') => {
+  const openComingSoon = useCallback((nextPlan: 'creator' | 'pro' = 'creator') => {
     setComingSoonPlan(nextPlan);
     setIsComingSoonModalOpen(true);
-  };
+  }, []);
 
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage(null), 3000);
-  };
+  }, []);
 
-  const handleRequestError = (error: unknown) => {
+  const handleRequestError = useCallback((error: unknown) => {
     if (error instanceof ApiRequestError) {
       if (error.status === 401) {
         window.location.href = '/sign-in';
@@ -1003,7 +1006,7 @@ function InvoiceApp() {
     }
 
     showToast('Something went wrong. Please try again.');
-  };
+  }, [showToast]);
 
   const {
     clients,
@@ -1140,7 +1143,17 @@ function InvoiceApp() {
     return () => {
       isMounted = false;
     };
-  }, [isTemplatePreviewOnly]);
+  }, [
+    autoMarkOverdueInvoices,
+    handleRequestError,
+    isTemplatePreviewOnly,
+    isTemplatePreviewRuntime,
+    setClients,
+    setData,
+    setIsClientsLoading,
+    setIsInvoicesLoading,
+    setSavedInvoices
+  ]);
 
   useEffect(() => {
     if (!isTemplatePreviewOnly) return;
@@ -1200,7 +1213,7 @@ function InvoiceApp() {
     if (!unlockedTemplateIds.includes(selectedTemplate)) {
       setSelectedTemplate(FREE_TEMPLATE);
     }
-  }, [isTemplatePreviewOnly, selectedTemplate, unlockedTemplateIds]);
+  }, [isTemplatePreviewOnly, isTemplatePreviewRuntime, selectedTemplate, unlockedTemplateIds]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1211,7 +1224,7 @@ function InvoiceApp() {
     if (!newlySavedInvoiceNumber) return;
     const timeout = setTimeout(() => setNewlySavedInvoiceNumber(null), 700);
     return () => clearTimeout(timeout);
-  }, [newlySavedInvoiceNumber]);
+  }, [newlySavedInvoiceNumber, setNewlySavedInvoiceNumber]);
 
   useEffect(() => {
     if (!isMobileViewport) return;
@@ -1258,7 +1271,7 @@ function InvoiceApp() {
     };
     document.addEventListener('mousedown', onOutsideClick);
     return () => document.removeEventListener('mousedown', onOutsideClick);
-  }, [isMobileViewport, openStatusMenuInvoiceId]);
+  }, [isMobileViewport, openStatusMenuInvoiceId, setOpenStatusMenuInvoiceId]);
 
   useEffect(() => {
     if (isAppLoading) return;
@@ -1267,7 +1280,7 @@ function InvoiceApp() {
       return;
     }
     setHasUnsavedChanges(true);
-  }, [data, isAppLoading, selectedCurrency, selectedTemplate]);
+  }, [data, isAppLoading, selectedCurrency, selectedTemplate, setHasUnsavedChanges]);
 
   useEffect(() => {
     if (!isDiscountVisible) {
@@ -1285,7 +1298,7 @@ function InvoiceApp() {
     if (!isExceeded) {
       hasShownDiscountWarningRef.current = false;
     }
-  }, [computed.subtotal, data.discountType, data.discountValue, isDiscountVisible]);
+  }, [computed.subtotal, data.discountType, data.discountValue, isDiscountVisible, showToast]);
 
   const filteredCurrencies = useMemo(() => {
     const query = currencySearch.trim().toLowerCase();
@@ -1332,13 +1345,13 @@ function InvoiceApp() {
     setCurrencySearch('');
   };
 
-  const handleTemplateSelect = (templateId: TemplateId) => {
+  const handleTemplateSelect = useCallback((templateId: TemplateId) => {
     if (!isTemplateUnlocked(templateId)) {
       openComingSoon('creator');
       return;
     }
     setSelectedTemplate(templateId);
-  };
+  }, [isTemplateUnlocked, openComingSoon]);
 
   const validateLogoFile = (file: File) => {
     if (file.size > MAX_LOGO_SIZE_BYTES) {
@@ -1551,7 +1564,7 @@ function InvoiceApp() {
       void saveInvoice({ silent: true, source: 'autosave' });
     }, 30000);
     return () => window.clearInterval(interval);
-  }, [hasUnsavedChanges, isAppLoading, isSavingInvoice]);
+  }, [hasUnsavedChanges, isAppLoading, isSavingInvoice, saveInvoice]);
 
 
   useEffect(() => {
@@ -1560,7 +1573,7 @@ function InvoiceApp() {
     if (template && isTemplateId(template)) {
       setSelectedTemplate(template);
     }
-  }, [isTemplatePreviewOnly, searchParams]);
+  }, [isTemplatePreviewOnly, isTemplatePreviewRuntime, searchParams]);
 
   useEffect(() => {
     if (isTemplatePreviewOnly) return;
@@ -1600,7 +1613,18 @@ function InvoiceApp() {
     if (!consumed) return;
     consumedQueryActionsRef.current = key;
     router.replace(pathname);
-  }, [handleTemplateSelect, isAppLoading, isTemplatePreviewOnly, openClientModal, openSavedInvoice, pathname, router, savedInvoices, searchParams]);
+  }, [
+    handleTemplateSelect,
+    isAppLoading,
+    isTemplatePreviewOnly,
+    openClientModal,
+    openSavedInvoice,
+    pathname,
+    router,
+    savedInvoices,
+    searchParams,
+    setActiveStatusFilter
+  ]);
 
   const deleteSavedInvoice = async (invoiceId: string) => {
     setConfirmDialog({
