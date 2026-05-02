@@ -38,6 +38,11 @@ const getClientIp = (request: Request) => {
   return request.headers.get('x-real-ip') || request.headers.get('cf-connecting-ip') || 'unknown';
 };
 
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const hasUpstashConfig = Boolean(upstashUrl && upstashToken);
+
 const getRequestHost = (request: Request) => {
   return request.headers.get('x-forwarded-host') || request.headers.get('host') || null;
 };
@@ -97,7 +102,7 @@ export const enforceSameOrigin = (request: Request) => {
   return NextResponse.json({ message: 'Invalid request origin' }, { status: 403 });
 };
 
-export const enforceRateLimit = ({ request, key, maxRequests, windowMs, subject }: RateLimitOptions) => {
+const enforceInMemoryRateLimit = ({ request, key, maxRequests, windowMs, subject }: RateLimitOptions) => {
   const now = Date.now();
   const state = getState();
   const identity = subject || getClientIp(request);
@@ -138,3 +143,69 @@ export const enforceRateLimit = ({ request, key, maxRequests, windowMs, subject 
   return null;
 };
 
+const getRetryAfterSeconds = (ttlMs: number, windowMs: number) => {
+  if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
+    return Math.max(1, Math.ceil(windowMs / 1000));
+  }
+  return Math.max(1, Math.ceil(ttlMs / 1000));
+};
+
+const enforceRedisRateLimit = async ({ request, key, maxRequests, windowMs, subject }: RateLimitOptions) => {
+  const identity = subject || getClientIp(request);
+  const bucketKey = `invoiceflow:ratelimit:${key}:${identity}`;
+
+  const response = await fetch(`${upstashUrl}/pipeline`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${upstashToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify([
+      ['INCR', bucketKey],
+      ['PEXPIRE', bucketKey, windowMs, 'NX'],
+      ['PTTL', bucketKey]
+    ]),
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upstash rate limit request failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as Array<{ result?: number | string | null }>;
+  const countRaw = payload?.[0]?.result;
+  const ttlRaw = payload?.[2]?.result;
+  const count = typeof countRaw === 'number' ? countRaw : Number(countRaw);
+  const ttlMs = typeof ttlRaw === 'number' ? ttlRaw : Number(ttlRaw);
+
+  if (!Number.isFinite(count)) {
+    return null;
+  }
+
+  if (count > maxRequests) {
+    const retryAfter = getRetryAfterSeconds(ttlMs, windowMs);
+    return NextResponse.json(
+      { message: 'Too many requests. Please try again shortly.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfter)
+        }
+      }
+    );
+  }
+
+  return null;
+};
+
+export const enforceRateLimit = async (options: RateLimitOptions) => {
+  if (hasUpstashConfig) {
+    try {
+      return await enforceRedisRateLimit(options);
+    } catch {
+      return enforceInMemoryRateLimit(options);
+    }
+  }
+
+  return enforceInMemoryRateLimit(options);
+};

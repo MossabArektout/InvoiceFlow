@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'invoices-status-patch',
       maxRequests: 120,

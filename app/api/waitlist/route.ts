@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const csrfError = enforceSameOrigin(request);
     if (csrfError) return csrfError;
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'waitlist-post',
       maxRequests: 30,

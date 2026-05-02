@@ -18,7 +18,7 @@ export async function PUT(request: Request, { params }: Params) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'clients-put',
       maxRequests: 90,
@@ -91,7 +91,7 @@ export async function DELETE(request: Request, { params }: Params) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'clients-delete',
       maxRequests: 60,

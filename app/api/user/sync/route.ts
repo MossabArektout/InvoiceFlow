@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'user-sync-post',
       maxRequests: 30,

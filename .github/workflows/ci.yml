@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/invoiceflow-start.log 2>&1 &
+          echo $! > /tmp/invoiceflow.pid
+
+      - name: Wait for server
+        run: |
+          for i in {1..60}; do
+            if curl -sSf http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          cat /tmp/invoiceflow-start.log || true
+          exit 1
+
+      - name: Smoke tests (public)
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+        run: npm run smoke
+
+      - name: Smoke tests (authenticated)
+        if: ${{ secrets.SMOKE_AUTH_COOKIE != '' }}
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+          SMOKE_AUTH_COOKIE: ${{ secrets.SMOKE_AUTH_COOKIE }}
+        run: npm run smoke
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/invoiceflow.pid ]; then
+            kill "$(cat /tmp/invoiceflow.pid)" || true
+          fi

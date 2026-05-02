@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({ request, key: 'clients-get', maxRequests: 180, windowMs: 60 * 1000, subject: userId });
+    const rateLimitError = await enforceRateLimit({ request, key: 'clients-get', maxRequests: 180, windowMs: 60 * 1000, subject: userId });
     if (rateLimitError) return rateLimitError;
 
     const { data, error } = await supabaseServer
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const rateLimitError = enforceRateLimit({
+    const rateLimitError = await enforceRateLimit({
       request,
       key: 'clients-post',
       maxRequests: 60,

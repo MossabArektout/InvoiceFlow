@@ -31,7 +31,18 @@ const authMiddleware = clerkMiddleware(async (auth, req) => {
 });
 
 export default function middleware(...args: Parameters<typeof authMiddleware>) {
+  const [request] = args;
+
   if (!hasClerkKeys) {
+    if (isProtectedRoute(request)) {
+      return new NextResponse('Authentication is not configured on this server.', {
+        status: 503,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8'
+        }
+      });
+    }
+
     return NextResponse.next();
   }
 
