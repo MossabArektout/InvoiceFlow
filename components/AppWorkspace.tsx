@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { type UserPlan, normalizePlan } from '@/lib/plans';
 import InvoiceApp from './InvoiceApp';
-import PostSignupInvoicePage from './PostSignupInvoicePage';
 import WorkspaceNavbar from './WorkspaceNavbar';
 
 const messageByMode: Record<string, string> = {
@@ -32,7 +31,6 @@ export default function AppWorkspace() {
   const pathname = usePathname();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [plan, setPlan] = useState<UserPlan>('free');
-  const [showSignupInvoicePage, setShowSignupInvoicePage] = useState(false);
   const isTemplatePreviewOnly = searchParams.get('preview') === 'template';
 
   const displayName = useMemo(() => {
@@ -70,10 +68,7 @@ export default function AppWorkspace() {
     const welcome = searchParams.get('welcome');
     if (!welcome || !messageByMode[welcome]) return;
 
-    if (welcome === 'signup') {
-      localStorage.setItem('invoiceflow_pro', 'false');
-      setShowSignupInvoicePage(true);
-    }
+    if (welcome === 'signup') localStorage.setItem('invoiceflow_pro', 'false');
 
     setToastMessage(messageByMode[welcome]);
 
@@ -93,13 +88,7 @@ export default function AppWorkspace() {
     <>
       {isTemplatePreviewOnly ? null : <WorkspaceNavbar displayName={displayName} plan={plan} />}
       {isTemplatePreviewOnly ? null : toastMessage ? <Toast message={toastMessage} /> : null}
-      {isTemplatePreviewOnly ? (
-        <InvoiceApp />
-      ) : showSignupInvoicePage ? (
-        <PostSignupInvoicePage onContinue={() => setShowSignupInvoicePage(false)} />
-      ) : (
-        <InvoiceApp />
-      )}
+      <InvoiceApp />
     </>
   );
 }
